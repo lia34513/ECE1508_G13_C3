@@ -82,9 +82,6 @@ Examples:
 # Test the highway environment with default settings (100 epochs, 50 steps per epoch, method 0)
 python src/testing.py --env highway
 
-# Test the roundabout environment
-python src/testing.py --env roundabout
-
 # Full example with all options
 python src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0
 ```
