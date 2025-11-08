@@ -43,17 +43,11 @@ ECE1508_G13_C3/
 
 ## Usage
 
-### Rule-based Methods
+### Rule-based Method
 
-The project includes rule-based baseline methods for comparison:
+The project currently includes a simple randome baseline:
 
-- **Method 0 (fixed_speed_keep_lane)**: Maintains current lane and speed using IDLE action. This is the simplest baseline that does not change lanes or speed.
-
-- **Method 1 (fixed_speed_random_lane)**: Maintains fixed speed but randomly changes lanes. At each step, it randomly chooses between staying in lane (IDLE), changing to the left lane, or changing to the right lane.
-
-- **Method 2 (random_speed_keep_lane)**: Randomly changes speed while maintaining current lane. At each step, it randomly chooses between maintaining speed (IDLE), accelerating (FASTER), or decelerating (SLOWER).
-
-- **Method 3 (random_speed_random_lane)**: Randomly changes both speed and lane. At each step, it randomly chooses from all available actions: IDLE, LANE_LEFT, LANE_RIGHT, FASTER, or SLOWER.
+- **Fixed speed & keep lane (IDLE action)**: Maintains the current lane and speed. Use this as a baseline for comparison with learned policies.
 
 ### Testing Environments
 
@@ -72,10 +66,7 @@ Available options:
 - `--steps`: Number of steps per epoch (default: `50`)
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Rule-based method to use (default: `0`)
-  - `0`: Fixed speed & keep lane
-  - `1`: Fixed speed & change lane randomly
-  - `2`: Random speed & keep lane
-  - `3`: Random speed & random lane
+  - `0`: Random Policy - Fixed speed & keep lane
 
 Examples:
 ```bash
