@@ -22,8 +22,8 @@ def parse_args():
     parser.add_argument('--steps', type=int, default=50, help='Number of steps per epoch')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
-    parser.add_argument('--high_speed_reward_weight', type=float, default=1.0, help='Reward weight a for the Speed')
-    parser.add_argument('--collision_reward_weight', type=float, default=-1.0, help='Reward weight b for the Collision')
+    parser.add_argument('--high_speed_reward_weight', type=float, default=1.0, help='Reward weight for the Speed')
+    parser.add_argument('--collision_reward_weight', type=float, default=-1.0, help='Reward weight for the Collision')
     return parser.parse_args()
 
 
