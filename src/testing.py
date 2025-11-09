@@ -22,6 +22,8 @@ def parse_args():
     parser.add_argument('--steps', type=int, default=50, help='Number of steps per epoch')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
+    parser.add_argument('--high_speed_reward_weight', type=float, default=1.0, help='Reward weight a for the Speed')
+    parser.add_argument('--collision_reward_weight', type=float, default=-1.0, help='Reward weight b for the Collision')
     return parser.parse_args()
 
 
@@ -37,11 +39,20 @@ def main():
     print(f"Method: {args.method}")
     print()
     
-    # Create environment based on user selection
+    # Set the configuration Reward function of the environment. https://github.com/Farama-Foundation/HighwayEnv/blob/b9180dfaef13c3c87eeb43f56f37b0e42d9d0476/highway_env/envs/highway_env.py
+    config = {
+        "collision_reward": args.collision_reward_weight,          # Penalty for collisions
+        "high_speed_reward": args.high_speed_reward_weight,        # Coefficient for velocity
+        "right_lane_reward": 0.0,        # Coefficient for lane preference
+        "reward_speed_range": [20, 30],  # v_min and v_max for normalization
+        "normalize_reward": True         # Optional normalization to [0, 1]
+    }
+
+    # Create environment based on user selection 
     if args.env == "highway":
-        env = gymnasium.make('highway-v0', render_mode=args.render_mode)
+        env = gymnasium.make('highway-v0', render_mode=args.render_mode, config=config)
     elif args.env == "roundabout":
-        env = gymnasium.make('roundabout-v0', render_mode=args.render_mode)
+        env = gymnasium.make('roundabout-v0', render_mode=args.render_mode, config=config)
     else:
         print(f"Error: Unknown environment '{args.env}'. Available options: highway, roundabout")
         return
@@ -53,12 +64,17 @@ def main():
     for epoch_num in range(args.epochs):
         obs, info = env.reset()
         
+        epoch_reward = 0.0
+        epoch_steps = 0
+
         for _ in range(args.steps):
             action = get_action(env, args.method)
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
             obs, reward, done, truncated, info = env.step(action)
+            epoch_reward += reward
+            epoch_steps += 1
             
             # Only render if using human mode
             if args.render_mode == 'human':
@@ -73,9 +89,11 @@ def main():
         if crashed:
             total_collisions += 1
 
-        # Display crashed state for each epoch
+        avg_reward = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
+
+        # Display crashed state and performance for each epoch
         crashed_status = "CRASHED" if crashed else "OK"
-        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}")
+        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Average reward: {avg_reward:.2f}")
 
     # Calculate and display collision rate
     collision_rate = (total_collisions / total_epochs) * 100 if total_epochs > 0 else 0
