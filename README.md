@@ -67,14 +67,16 @@ Available options:
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Rule-based method to use (default: `0`)
   - `0`: Random Policy - Fixed speed & keep lane
+- `--high_speed_reward_weight`: High-speed reward weight (default: `1.0`)
+- `--collision_reward_weight`: Collision reward weight (default: `-1.0`)
 
 Examples:
 ```bash
 # Test the highway environment with default settings (100 epochs, 50 steps per epoch, method 0)
-python src/testing.py --env highway
+python3 src/testing.py --env highway
 
 # Full example with all options
-python src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0
+python3 src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0 --high_speed_reward_weight 1 --collision_reward_weight -1.0
 ```
 
 
