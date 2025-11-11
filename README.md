@@ -54,7 +54,7 @@ The project currently includes a simple randome baseline:
 To test an environment, run the testing script:
 
 ```bash
-python src/testing.py --env highway
+python3 src/testing.py --env highway
 ```
 
 Available options:
@@ -67,10 +67,14 @@ Available options:
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Rule-based method to use (default: `0`)
   - `0`: Random Policy - Fixed speed & keep lane
-- `--high_density`: Increase traffic density to 1.25× (default: `False`)
+- `--high_speed_reward_weight`: High-speed reward weight (default: `1.0`)
+- `--collision_reward_weight`: Collision reward weight (default: `-1.0`)
+- `--traffic_density`: The density of the traffic. 1.0 is the default, 1.25 is the high density (default: `1.0`)
 
 Examples:
 ```bash
 # Full example with all options
-python src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0 --high_density True
+python3 src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0 --high_speed_reward_weight 1 --collision_reward_weight -1.0 --traffic_density 1.25
 ```
+
+

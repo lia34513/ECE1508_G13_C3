@@ -23,7 +23,9 @@ def parse_args():
     parser.add_argument('--steps', type=int, default=50, help='Number of steps per epoch')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
-    parser.add_argument('--high_density', type=bool, default=False, help='Increase vehicle density to 1.25: True or False')
+    parser.add_argument('--high_speed_reward_weight', type=float, default=1.0, help='Reward weight for the Speed')
+    parser.add_argument('--collision_reward_weight', type=float, default=-1.0, help='Reward weight for the Collision')
+    parser.add_argument('--traffic_density', type=float, default=1.0, help='The density of the traffic: 1.0 is the default, 1.25 is the high density')
     return parser.parse_args()
 
 
@@ -37,15 +39,20 @@ def main():
     print(f"Steps per epoch: {args.steps}")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {args.method}")
-    print(f"High density traffic: {args.high_density}")
+    print(f"Traffic Density: {args.traffic_density}")
     print()
     
-    if args.high_density:
-        config = {
-            "vehicles_density": 1.25,
-        }
+    # Set the configuration Reward function of the environment. https://github.com/Farama-Foundation/HighwayEnv/blob/b9180dfaef13c3c87eeb43f56f37b0e42d9d0476/highway_env/envs/highway_env.py
+    config = {
+        "collision_reward": args.collision_reward_weight,          # Penalty for collisions
+        "high_speed_reward": args.high_speed_reward_weight,        # Coefficient for velocity
+        "right_lane_reward": 0.0,        # Coefficient for lane preference
+        "reward_speed_range": [20, 30],  # v_min and v_max for normalization
+        "normalize_reward": True,         # Optional normalization to [0, 1]
+        "vehicles_density": args.traffic_density,
+    }
 
-    # Create environment based on user selection
+    # Create environment based on user selection 
     if args.env == "highway":
         env = gymnasium.make('highway-v0', render_mode=args.render_mode, config=config)
     elif args.env == "roundabout":
@@ -62,6 +69,9 @@ def main():
 
     for epoch_num in range(args.epochs):
         obs, info = env.reset()
+        
+        epoch_reward = 0.0
+        epoch_steps = 0
         step_speeds = []
 
         for _ in range(args.steps):
@@ -70,7 +80,10 @@ def main():
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
             obs, reward, done, truncated, info = env.step(action)
-
+            
+            epoch_reward += reward
+            epoch_steps += 1
+          
             # Record the ego vehicle speed if available in info.
             ego_speed = info.get("speed")
             if ego_speed is not None:
@@ -92,9 +105,11 @@ def main():
         if crashed:
             total_collisions += 1
 
-        # Display crashed state for each epoch
+        avg_reward = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
+
+        # Display crashed state and performance for each epoch
         crashed_status = "CRASHED" if crashed else "OK"
-        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}")
+        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Average reward: {avg_reward:.2f}")
 
     # Calculate and display metrics
     collision_rate = get_collision_rate(total_collisions, total_epochs)
