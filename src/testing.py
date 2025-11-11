@@ -37,6 +37,7 @@ def main():
     print(f"Steps per epoch: {args.steps}")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {args.method}")
+    print(f"High density traffic: {args.high_density}")
     print()
     
     if args.high_density:

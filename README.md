@@ -67,14 +67,10 @@ Available options:
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Rule-based method to use (default: `0`)
   - `0`: Random Policy - Fixed speed & keep lane
+- `--high_density`: Increase traffic density to 1.25× (default: `False`)
 
 Examples:
 ```bash
-# Test the highway environment with default settings (100 epochs, 50 steps per epoch, method 0)
-python src/testing.py --env highway
-
 # Full example with all options
-python src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0
+python src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0 --high_density True
 ```
-
-
