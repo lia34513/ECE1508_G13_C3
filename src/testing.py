@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--steps', type=int, default=50, help='Number of steps per epoch')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
+    parser.add_argument('--high_density', type=bool, default=False, help='Increase vehicle density to 1.25: True or False')
     return parser.parse_args()
 
 
@@ -38,11 +39,16 @@ def main():
     print(f"Method: {args.method}")
     print()
     
+    if args.high_density:
+        config = {
+            "vehicles_density": 1.25,
+        }
+
     # Create environment based on user selection
     if args.env == "highway":
-        env = gymnasium.make('highway-v0', render_mode=args.render_mode)
+        env = gymnasium.make('highway-v0', render_mode=args.render_mode, config=config)
     elif args.env == "roundabout":
-        env = gymnasium.make('roundabout-v0', render_mode=args.render_mode)
+        env = gymnasium.make('roundabout-v0', render_mode=args.render_mode, config=config)
     else:
         print(f"Error: Unknown environment '{args.env}'. Available options: highway, roundabout")
         return
