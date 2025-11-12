@@ -63,7 +63,7 @@ Available options:
   - `roundabout`: Roundabout environment (`roundabout-v0`)
 - `--render_mode`: Specify the render mode (default: `rgb_array`)
   - Common options: `rgb_array`, `human`
-- `--steps`: Number of steps per epoch (default: `50`)
+- `--duration`: Duration of the episode (default: `40`)
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Rule-based method to use (default: `0`)
   - `0`: Random Policy - Fixed speed & keep lane
@@ -74,7 +74,7 @@ Available options:
 Examples:
 ```bash
 # Full example with all options
-python3 src/testing.py --env highway --render_mode human --epochs 100 --steps 50 --method 0 --high_speed_reward_weight 1 --collision_reward_weight -1.0 --traffic_density 1.25
+python3 src/testing.py --env highway --render_mode human --epochs 100 --duration 40 --method 0 --high_speed_reward_weight 1 --collision_reward_weight -1.0 --traffic_density 1.25
 ```
 
 
