@@ -20,7 +20,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Testing environment')
     parser.add_argument('--env', type=str, default='highway', help='Environment name: highway or roundabout')
     parser.add_argument('--render_mode', type=str, default='rgb_array', help='Render mode: rgb_array or human')
-    parser.add_argument('--steps', type=int, default=50, help='Number of steps per epoch')
+    parser.add_argument('--duration', type=int, default=40, help='The duration of the episode')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
     parser.add_argument('--high_speed_reward_weight', type=float, default=1.0, help='Reward weight for the Speed')
@@ -36,7 +36,7 @@ def main():
     # Print settings at the beginning
     print(f"=== Testing Settings ===")
     print(f"Environment: {args.env}")
-    print(f"Steps per epoch: {args.steps}")
+    print(f"Duration: {args.duration}s")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {args.method}")
     print(f"Traffic Density: {args.traffic_density}")
@@ -49,7 +49,8 @@ def main():
         "right_lane_reward": 0.0,        # Coefficient for lane preference
         "reward_speed_range": [20, 30],  # v_min and v_max for normalization
         "normalize_reward": True,         # Optional normalization to [0, 1]
-        "vehicles_density": args.traffic_density,
+        "vehicles_density": args.traffic_density, # The density of the traffic
+        "duration": args.duration, # The duration of the episode
     }
 
     # Create environment based on user selection 
@@ -74,7 +75,8 @@ def main():
         epoch_steps = 0
         step_speeds = []
 
-        for _ in range(args.steps):
+        # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
+        while True:
             action = get_action(env, args.method)
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
