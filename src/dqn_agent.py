@@ -2,6 +2,7 @@
 Simple DQN agent for discrete-action environments.
 """
 
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -156,3 +157,43 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
         return loss.item()
+
+
+def load_dqn_agent_from_checkpoint(state_dim, action_dim, checkpoint_path):
+    """
+    Load a trained DQN agent from a checkpoint file.
+
+    Args:
+        state_dim: Dimension of the state space.
+        action_dim: Dimension of the action space.
+        checkpoint_path: Path to the checkpoint file.
+
+    Returns:
+        DQNAgent: Loaded agent with trained weights, or None if loading fails.
+    """
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+
+    # Create agent with same hyperparameters as training
+    agent = DQNAgent(
+        state_dim=state_dim,
+        action_dim=action_dim,
+        lr=1e-3,
+        gamma=0.99,
+        epsilon_start=1.0,
+        epsilon_end=0.05,
+        epsilon_decay=0.995,
+        memory_capacity=50000,
+        batch_size=64,
+        target_update_interval=10,
+    )
+
+    # Load checkpoint
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        agent.q_network.load_state_dict(checkpoint['q_network_state_dict'])
+        agent.target_network.load_state_dict(checkpoint['target_network_state_dict'])
+        print(f"Loaded checkpoint from: {checkpoint_path}")
+        return agent
+    except Exception as e:
+        raise RuntimeError(f"Error loading checkpoint: {e}") from e
