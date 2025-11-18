@@ -7,11 +7,11 @@ def get_highway_config():
     config = {
         "collision_reward": -1,          # Penalty for collisions
         "high_speed_reward": 0.4,        # Coefficient for velocity
-        "right_lane_reward": 0,           # Coefficient for lane preference
-        "reward_speed_range": [20, 30],            # v_min and v_max for normalization
-        "normalize_reward": True,                 # Optional normalization to [0, 1]
-        "vehicles_density": 1,                 # The density of the traffic
-        "duration": 40,                        # The duration of the episode
+        "right_lane_reward": 0,          # Coefficient for lane preference
+        "reward_speed_range": [20, 30],  # v_min and v_max for normalization
+        "normalize_reward": True,        # Optional normalization to [0, 1]
+        "vehicles_density": 1,           # The density of the traffic
+        "duration": 40,                  # The duration of the episode
     }
     return config
 
