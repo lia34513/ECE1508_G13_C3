@@ -79,20 +79,18 @@ Available options:
   - `roundabout`: Roundabout environment (`roundabout-v0`)
 - `--render_mode`: Specify the render mode (default: `rgb_array`)
   - Common options: `rgb_array`, `human`
-- `--duration`: Duration of the episode (default: `40`)
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Testing method to use (default: `0`)
   - `0`: Fixed speed & keep lane (rule-based baseline)
   - `1`: DQN agent (requires trained checkpoint)
-- `--high_speed_reward_weight`: High-speed reward weight (default: `0.4`)
-- `--collision_reward_weight`: Collision reward weight (default: `-1.0`)
-- `--traffic_density`: The density of the traffic. 1.0 is the default, 1.25 is the high density (default: `1.0`)
+
+**Note**: Environment configuration parameters (collision reward weight, high speed reward weight, traffic density, duration) are set in `src/env_config.py` and cannot be changed via command-line arguments.
 
 ### Examples
 
 **Testing with rule-based baseline (Method 0):**
 ```bash
-python3 src/testing.py --env highway --render_mode human --epochs 100 --duration 40 --method 0
+python3 src/testing.py --env highway --render_mode human --epochs 100 --method 0
 ```
 
 **Testing with DQN agent (Method 1):**
@@ -101,12 +99,7 @@ python3 src/testing.py --env highway --render_mode human --epochs 100 --duration
 python3 src/train_dqn_highway.py
 
 # Then test with the trained model
-python3 src/testing.py --env highway --render_mode human --epochs 100 --duration 40 --method 1
-```
-
-**Full example with all options:**
-```bash
-python3 src/testing.py --env highway --render_mode human --epochs 100 --duration 40 --method 0 --high_speed_reward_weight 1 --collision_reward_weight -1.0 --traffic_density 1.25
+python3 src/testing.py --env highway --render_mode human --epochs 100 --method 1
 ```
 
 

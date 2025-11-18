@@ -7,6 +7,7 @@ import os
 from rule_based import fixed_speed_keep_lane
 from performance_metrics import get_collision_rate, get_average_speed
 from dqn_agent import load_dqn_agent_from_checkpoint
+from env_config import get_highway_config
 
 
 def get_action(env, method=0, agent=None, state=None):
@@ -29,12 +30,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Testing environment')
     parser.add_argument('--env', type=str, default='highway', help='Environment name: highway or roundabout')
     parser.add_argument('--render_mode', type=str, default='rgb_array', help='Render mode: rgb_array or human')
-    parser.add_argument('--duration', type=int, default=40, help='The duration of the episode')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
-    parser.add_argument('--high_speed_reward_weight', type=float, default=0.4, help='Reward weight for the Speed')
-    parser.add_argument('--collision_reward_weight', type=float, default=-1.0, help='Reward weight for the Collision')
-    parser.add_argument('--traffic_density', type=float, default=1.0, help='The density of the traffic: 1.0 is the default, 1.25 is the high density')
     return parser.parse_args()
 
 
@@ -42,25 +39,19 @@ def main():
     """Main function to run environment testing."""
     args = parse_args()
     
+    # Set the configuration of the environment (using defaults from env_config)
+    config = get_highway_config()
+    
     # Print settings at the beginning
     print(f"=== Testing Settings ===")
     print(f"Environment: {args.env}")
-    print(f"Duration: {args.duration}s")
+    print(f"Duration: {config['duration']}s")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {args.method}")
-    print(f"Traffic Density: {args.traffic_density}")
+    print(f"Traffic Density: {config['vehicles_density']}")
+    print(f"Collision Reward Weight: {config['collision_reward']}")
+    print(f"High Speed Reward Weight: {config['high_speed_reward']}")
     print()
-    
-    # Set the configuration Reward function of the environment. https://github.com/Farama-Foundation/HighwayEnv/blob/b9180dfaef13c3c87eeb43f56f37b0e42d9d0476/highway_env/envs/highway_env.py
-    config = {
-        "collision_reward": args.collision_reward_weight,          # Penalty for collisions
-        "high_speed_reward": args.high_speed_reward_weight,        # Coefficient for velocity
-        "right_lane_reward": 0.0,        # Coefficient for lane preference
-        "reward_speed_range": [20, 30],  # v_min and v_max for normalization
-        "normalize_reward": True,         # Optional normalization to [0, 1]
-        "vehicles_density": args.traffic_density, # The density of the traffic
-        "duration": args.duration, # The duration of the episode
-    }
 
     # Create environment based on user selection 
     if args.env == "highway":
