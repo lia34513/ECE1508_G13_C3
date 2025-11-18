@@ -1,3 +1,7 @@
 gymnasium
 highway-env
-
+stable_baselines3
+tensorboard
+torch
+numpy
+matplotlib

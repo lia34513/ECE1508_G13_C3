@@ -2,14 +2,21 @@ import gymnasium
 import highway_env
 from matplotlib import pyplot as plt
 import argparse
+import numpy as np
+import os
 from rule_based import fixed_speed_keep_lane
 from performance_metrics import get_collision_rate, get_average_speed
+from env_config import get_highway_config
+from stable_baselines3 import DQN
 
 
-def get_action(env, method=0):
+def get_action(env, method=0, model=None, obs=None):
     """Get action for the environment."""
     if method == 0:
         return fixed_speed_keep_lane(env)
+    elif method == 1:
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
    
     print(f"Error: Unknown method {method}.")
     return None
@@ -20,12 +27,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Testing environment')
     parser.add_argument('--env', type=str, default='highway', help='Environment name: highway or roundabout')
     parser.add_argument('--render_mode', type=str, default='rgb_array', help='Render mode: rgb_array or human')
-    parser.add_argument('--duration', type=int, default=40, help='The duration of the episode')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
-    parser.add_argument('--high_speed_reward_weight', type=float, default=1.0, help='Reward weight for the Speed')
-    parser.add_argument('--collision_reward_weight', type=float, default=-1.0, help='Reward weight for the Collision')
-    parser.add_argument('--traffic_density', type=float, default=1.0, help='The density of the traffic: 1.0 is the default, 1.25 is the high density')
+    parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default), 1: stable-baselines3 DQN')
     return parser.parse_args()
 
 
@@ -33,25 +36,19 @@ def main():
     """Main function to run environment testing."""
     args = parse_args()
     
+    # Set the configuration of the environment (using defaults from env_config)
+    config = get_highway_config()
+    
     # Print settings at the beginning
     print(f"=== Testing Settings ===")
     print(f"Environment: {args.env}")
-    print(f"Duration: {args.duration}s")
+    print(f"Duration: {config['duration']}s")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {args.method}")
-    print(f"Traffic Density: {args.traffic_density}")
+    print(f"Traffic Density: {config['vehicles_density']}")
+    print(f"Collision Reward Weight: {config['collision_reward']}")
+    print(f"High Speed Reward Weight: {config['high_speed_reward']}")
     print()
-    
-    # Set the configuration Reward function of the environment. https://github.com/Farama-Foundation/HighwayEnv/blob/b9180dfaef13c3c87eeb43f56f37b0e42d9d0476/highway_env/envs/highway_env.py
-    config = {
-        "collision_reward": args.collision_reward_weight,          # Penalty for collisions
-        "high_speed_reward": args.high_speed_reward_weight,        # Coefficient for velocity
-        "right_lane_reward": 0.0,        # Coefficient for lane preference
-        "reward_speed_range": [20, 30],  # v_min and v_max for normalization
-        "normalize_reward": True,         # Optional normalization to [0, 1]
-        "vehicles_density": args.traffic_density, # The density of the traffic
-        "duration": args.duration, # The duration of the episode
-    }
 
     # Create environment based on user selection 
     if args.env == "highway":
@@ -62,11 +59,24 @@ def main():
         print(f"Error: Unknown environment '{args.env}'. Available options: highway, roundabout")
         return
     
+    # Initialize model based on method
+    DQN_model = None
+    
+    if args.method == 1:
+        # Stable-baselines3 DQN model
+        checkpoint_path = os.path.join("model", "DQN", "checkpoints", 
+                                     f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}")
+        
+        # Load stable-baselines3 model
+        DQN_model = DQN.load(checkpoint_path, env=env)
+  
+    
     # Track collisions and speeds
     total_collisions = 0
     total_epochs = 0
     collision_rate = 0
     episode_speeds = []
+    episode_rewards = []
 
     for epoch_num in range(args.epochs):
         obs, info = env.reset()
@@ -77,7 +87,7 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
-            action = get_action(env, args.method)
+            action = get_action(env, args.method, model=DQN_model, obs=obs)
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
@@ -108,28 +118,24 @@ def main():
             total_collisions += 1
 
         avg_reward = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
+        episode_rewards.append(avg_reward)
 
         # Display crashed state and performance for each epoch
         crashed_status = "CRASHED" if crashed else "OK"
-        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Average reward: {avg_reward:.2f}")
+        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Average reward: {avg_reward:.4f}")
 
     # Calculate and display metrics
     collision_rate = get_collision_rate(total_collisions, total_epochs)
     average_speed = get_average_speed(episode_speeds)
+    overall_avg_reward = np.mean(episode_rewards) if episode_rewards else 0.0
 
     print(f"\n=== Testing Results ===")
     print(f"Total epochs: {total_epochs}")
     print(f"Collisions: {total_collisions}")
 
-    if collision_rate is not None:
-        print(f"Collision rate: {collision_rate:.2f}%")
-    else:
-        print("Error: Collision rate is None. Please check the total_collisions and total_epochs.")
-
-    if average_speed is not None:
-        print(f"Average speed: {average_speed:.2f} (m/s)")
-    else:
-        print("Error: Average speed is None. Please check the episode_speeds.")
+    print(f"Collision rate: {collision_rate:.2f}%")
+    print(f"Average speed: {average_speed:.2f} (m/s)")
+    print(f"Average reward: {overall_avg_reward:.2f}")
 
 
 if __name__ == "__main__":
