@@ -6,20 +6,17 @@ import numpy as np
 import os
 from rule_based import fixed_speed_keep_lane
 from performance_metrics import get_collision_rate, get_average_speed
-from dqn_agent import load_dqn_agent_from_checkpoint
 from env_config import get_highway_config
+from stable_baselines3 import DQN
 
 
-def get_action(env, method=0, agent=None, state=None):
+def get_action(env, method=0, model=None, obs=None):
     """Get action for the environment."""
     if method == 0:
         return fixed_speed_keep_lane(env)
     elif method == 1:
-        
-        agent.epsilon = 0.0
-        action = agent.select_action(state)
-
-        return action
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
    
     print(f"Error: Unknown method {method}.")
     return None
@@ -31,7 +28,7 @@ def parse_args():
     parser.add_argument('--env', type=str, default='highway', help='Environment name: highway or roundabout')
     parser.add_argument('--render_mode', type=str, default='rgb_array', help='Render mode: rgb_array or human')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default)')
+    parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default), 1: stable-baselines3 DQN')
     return parser.parse_args()
 
 
@@ -62,20 +59,16 @@ def main():
         print(f"Error: Unknown environment '{args.env}'. Available options: highway, roundabout")
         return
     
-    # Initialize DQN agent if method 1 is selected
-    agent = None
+    # Initialize model based on method
+    DQN_model = None
+    
     if args.method == 1:
-        # Use static checkpoint path
-        checkpoint_path = os.path.join("model", "DQN", "Checkpoint", "dqn_highway.pth")
+        # Stable-baselines3 DQN model
+        checkpoint_path = os.path.join("model", "DQN", "checkpoints", 
+                                     f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}")
         
-        # Get state dimensions from environment
-        obs, info = env.reset()
-        state = np.array(obs.get("observation", obs) if isinstance(obs, dict) else obs, dtype=np.float32).flatten()
-        state_dim = state.shape[0]
-        action_dim = env.action_space.n
-        
-        # Load DQN agent from checkpoint
-        agent = load_dqn_agent_from_checkpoint(state_dim, action_dim, checkpoint_path)
+        # Load stable-baselines3 model
+        DQN_model = DQN.load(checkpoint_path, env=env)
   
     
     # Track collisions and speeds
@@ -87,7 +80,6 @@ def main():
 
     for epoch_num in range(args.epochs):
         obs, info = env.reset()
-        state = np.array(obs.get("observation", obs) if isinstance(obs, dict) else obs, dtype=np.float32).flatten() if args.method == 1 else None
         
         epoch_reward = 0.0
         epoch_steps = 0
@@ -95,15 +87,11 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
-            action = get_action(env, args.method, agent=agent, state=state)
+            action = get_action(env, args.method, model=DQN_model, obs=obs)
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
             obs, reward, done, truncated, info = env.step(action)
-            
-            # Update state for DQN agent
-            if args.method == 1:
-                state = np.array(obs.get("observation", obs) if isinstance(obs, dict) else obs, dtype=np.float32).flatten()
             
             epoch_reward += reward
             epoch_steps += 1

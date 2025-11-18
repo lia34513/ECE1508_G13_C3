@@ -2,6 +2,7 @@ from stable_baselines3 import DQN
 from env_config import get_highway_config
 import gymnasium
 import highway_env
+import os
 
 config = get_highway_config()
 
@@ -21,5 +22,12 @@ def train_dqn():
                     verbose=1,
                     tensorboard_log=f'model/DQN/Logs/vehicles_density_{config["vehicles_density"]}_high_speed_reward_{config["high_speed_reward"]}_collision_reward_{config["collision_reward"]}')
     model.learn(int(2e4))
+    
+    # Save checkpoint
+    checkpoint_dir = os.path.join("model", "DQN", "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_path = os.path.join(checkpoint_dir, f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}.zip")
+    model.save(checkpoint_path)
+    print(f"Saved checkpoint to: {checkpoint_path}")
 
 train_dqn()
