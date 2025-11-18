@@ -96,7 +96,7 @@ python3 src/testing.py --env highway --render_mode human --epochs 100 --method 0
 **Testing with DQN agent (Method 1):**
 ```bash
 # First, ensure you have trained a DQN model
-python3 src/train_dqn_highway.py
+python3 src/training_dqn.py
 
 # Then test with the trained model
 python3 src/testing.py --env highway --render_mode human --epochs 100 --method 1
