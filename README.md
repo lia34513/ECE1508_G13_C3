@@ -49,8 +49,19 @@ ECE1508_G13_C3/
 To train a DQN agent on the highway-v0 environment:
 
 ```bash
-python3 src/train_dqn_highway.py
+python3 src/training_dqn.py
 ```
+
+### Viewing Training Logs with TensorBoard
+
+Reward/loss curves and Stable-Baselines3 logs are written under `model/DQN/Logs`.  
+Launch TensorBoard in a separate terminal to explore them:
+
+```bash
+tensorboard --logdir model/DQN/Logs --port 6006
+```
+
+Then open the URL (for example http://localhost:6006) in your browser. 
 
 ### Testing Methods
 
