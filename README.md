@@ -73,7 +73,7 @@ The project supports two testing methods:
 
 2. **Method 1**: DQN agent (RL-based)
    - Uses a trained DQN agent for decision-making
-   - Requires a trained checkpoint at `model/DQN/Checkpoint/dqn_highway.pth`
+   - Requires a trained checkpoint at `model/DQN/checkpoints/dqn_highway_vehicles_density_1_high_speed_reward_0.4_collision_reward_-1.zip`
    - Automatically loads the checkpoint when method 1 is selected
 
 ### Testing Environments
