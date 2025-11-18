@@ -8,7 +8,7 @@ from rule_based import fixed_speed_keep_lane
 from performance_metrics import get_collision_rate, get_average_speed
 from env_config import get_highway_config
 from stable_baselines3 import DQN
-
+import torch
 
 def get_action(env, method=0, model=None, obs=None):
     """Get action for the environment."""
@@ -64,11 +64,23 @@ def main():
     
     if args.method == 1:
         # Stable-baselines3 DQN model
-        checkpoint_path = os.path.join("model", "DQN", "checkpoints", 
-                                     f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}")
+        checkpoint_path = os.path.join(
+            "model", "DQN", "checkpoints",
+            f"dqn_highway_vehicles_density_{config['vehicles_density']}_"
+            f"high_speed_reward_{config['high_speed_reward']}_"
+            f"collision_reward_{config['collision_reward']}.zip"
+        )
         
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+        print("Testing using device:", device)
+
         # Load stable-baselines3 model
-        DQN_model = DQN.load(checkpoint_path, env=env)
+        DQN_model = DQN.load(checkpoint_path, env=env, device=device)
   
     
     # Track collisions and speeds
