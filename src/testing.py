@@ -2,27 +2,39 @@ import gymnasium
 import highway_env
 from matplotlib import pyplot as plt
 import argparse
+import numpy as np
+import os
 from rule_based import fixed_speed_keep_lane, OPDAgent
 from performance_metrics import get_collision_rate, get_average_speed
+from env_config import get_highway_config
+from stable_baselines3 import DQN
 
 
-def get_action(env, method=0, agent=None, observation=None):
+def get_action(env, method=0, model=None, agent=None, obs=None):
     """Get action for the environment.
 
     Args:
         env: The gymnasium environment
-        method: The policy method to use (0: fixed_speed_keep_lane, 1: OPD)
-        agent: The agent instance (required for method 1 - OPD)
-        observation: Current observation (required for method 1 - OPD)
+        method: The policy method to use
+            0: fixed_speed_keep_lane (baseline)
+            1: stable-baselines3 DQN
+            2: OPD (Optimistic Planning)
+        model: DQN model instance (required for method 1)
+        agent: OPD agent instance (required for method 2)
+        obs: Current observation (required for methods 1 and 2)
     """
     if method == 0:
         return fixed_speed_keep_lane(env)
     elif method == 1:
+        # DQN policy
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
+    elif method == 2:
         # OPD policy
-        if agent is None or observation is None:
+        if agent is None or obs is None:
             print("Error: OPD method requires agent and observation.")
             return None
-        return agent.act(observation)
+        return agent.act(obs)
 
     print(f"Error: Unknown method {method}.")
     return None
@@ -43,33 +55,36 @@ def parse_args():
         default="rgb_array",
         help="Render mode: rgb_array or human",
     )
-    parser.add_argument(
-        "--duration", type=int, default=40, help="The duration of the episode"
-    )
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument(
         "--method",
         type=int,
         default=0,
-        help="0: fixed speed & keep lane, 1: OPD (Optimistic Planning)",
+        help="0: fixed speed & keep lane, 1: stable-baselines3 DQN, 2: OPD (Optimistic Planning)",
+    )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=None,
+        help="The duration of the episode (if not set, uses env_config defaults)",
     )
     parser.add_argument(
         "--high_speed_reward_weight",
         type=float,
-        default=1.0,
-        help="Reward weight for the Speed",
+        default=None,
+        help="Reward weight for the Speed (if not set, uses env_config defaults)",
     )
     parser.add_argument(
         "--collision_reward_weight",
         type=float,
-        default=-1.0,
-        help="Reward weight for the Collision",
+        default=None,
+        help="Reward weight for the Collision (if not set, uses env_config defaults)",
     )
     parser.add_argument(
         "--traffic_density",
         type=float,
-        default=1.0,
-        help="The density of the traffic: 1.0 is the default, 1.25 is the high density",
+        default=None,
+        help="The density of the traffic (if not set, uses env_config defaults)",
     )
     # OPD specific parameters
     parser.add_argument(
@@ -89,33 +104,39 @@ def main():
     args = parse_args()
 
     # Map method numbers to names
-    method_names = {0: "Fixed Speed & Keep Lane", 1: "OPD (Optimistic Planning)"}
+    method_names = {
+        0: "Fixed Speed & Keep Lane",
+        1: "DQN (Deep Q-Network)",
+        2: "OPD (Optimistic Planning)",
+    }
     method_name = method_names.get(args.method, f"Unknown ({args.method})")
+
+    # Set the configuration of the environment (using defaults from env_config)
+    config = get_highway_config()
+
+    # Override with command-line arguments if provided
+    if args.high_speed_reward_weight is not None:
+        config["high_speed_reward"] = args.high_speed_reward_weight
+    if args.collision_reward_weight is not None:
+        config["collision_reward"] = args.collision_reward_weight
+    if args.traffic_density is not None:
+        config["vehicles_density"] = args.traffic_density
+    if args.duration is not None:
+        config["duration"] = args.duration
 
     # Print settings at the beginning
     print(f"=== Testing Settings ===")
     print(f"Environment: {args.env}")
-    print(f"Duration: {args.duration}s")
+    print(f"Duration: {config['duration']}s")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {method_name}")
-    print(f"Traffic Density: {args.traffic_density}")
-    print(f"High Speed Reward Weight: {args.high_speed_reward_weight}")
-    print(f"Collision Reward Weight: {args.collision_reward_weight}")
-    # if args.method == 1:
-    #     print(f"OPD Budget: {args.opd_budget}")
-    #     print(f"OPD Gamma: {args.opd_gamma}")
+    print(f"Traffic Density: {config['vehicles_density']}")
+    print(f"High Speed Reward Weight: {config['high_speed_reward']}")
+    print(f"Collision Reward Weight: {config['collision_reward']}")
+    if args.method == 2:
+        print(f"OPD Budget: {args.opd_budget}")
+        print(f"OPD Gamma: {args.opd_gamma}")
     print()
-
-    # Set the configuration Reward function of the environment. https://github.com/Farama-Foundation/HighwayEnv/blob/b9180dfaef13c3c87eeb43f56f37b0e42d9d0476/highway_env/envs/highway_env.py
-    config = {
-        "collision_reward": args.collision_reward_weight,  # Penalty for collisions
-        "high_speed_reward": args.high_speed_reward_weight,  # Coefficient for velocity
-        "right_lane_reward": 0.0,  # Coefficient for lane preference
-        "reward_speed_range": [20, 30],  # v_min and v_max for normalization
-        "normalize_reward": True,  # Optional normalization to [0, 1]
-        "vehicles_density": args.traffic_density,  # The density of the traffic
-        "duration": args.duration,  # The duration of the episode
-    }
 
     # Create environment based on user selection
     if args.env == "highway":
@@ -130,21 +151,37 @@ def main():
         )
         return
 
-    # Create agent if using OPD method
-    agent = None
+    # Initialize model/agent based on method
+    DQN_model = None
+    OPD_agent = None
+
     if args.method == 1:
-        agent = OPDAgent(env, budget=args.opd_budget, gamma=args.opd_gamma)
-        print(
-            f"OPD Agent initialized with budget={args.opd_budget}, gamma={args.opd_gamma}"
+        # Stable-baselines3 DQN model
+        checkpoint_path = os.path.join(
+            "model",
+            "DQN",
+            "checkpoints",
+            f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}",
         )
-        print()
+
+        # Load stable-baselines3 model
+        DQN_model = DQN.load(checkpoint_path, env=env)
+        print(f"DQN model loaded from: {checkpoint_path}\n")
+
+    elif args.method == 2:
+        # OPD agent
+        OPD_agent = OPDAgent(env, budget=args.opd_budget, gamma=args.opd_gamma)
+        print(
+            f"OPD Agent initialized with budget={args.opd_budget}, gamma={args.opd_gamma}\n"
+        )
 
     # Track collisions and speeds
     total_collisions = 0
     total_epochs = 0
     collision_rate = 0
     episode_speeds = []
-    total_rewards = []
+    episode_total_rewards = []  # Total reward per episode
+    episode_avg_rewards = []    # Average reward per step per episode
 
     for epoch_num in range(args.epochs):
         obs, info = env.reset()
@@ -155,7 +192,9 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
-            action = get_action(env, args.method, agent=agent, observation=obs)
+            action = get_action(
+                env, args.method, model=DQN_model, agent=OPD_agent, obs=obs
+            )
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
@@ -186,18 +225,20 @@ def main():
             total_collisions += 1
 
         avg_reward = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
-        total_rewards.append(epoch_reward)
+        episode_total_rewards.append(epoch_reward)
+        episode_avg_rewards.append(avg_reward)
 
         # Display crashed state and performance for each epoch
         crashed_status = "CRASHED" if crashed else "OK"
         print(
-            f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Total reward: {epoch_reward:.2f}, Avg reward: {avg_reward:.2f}"
+            f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Total reward: {epoch_reward:.2f}, Avg reward: {avg_reward:.4f}"
         )
 
     # Calculate and display metrics
     collision_rate = get_collision_rate(total_collisions, total_epochs)
     average_speed = get_average_speed(episode_speeds)
-    avg_total_reward = sum(total_rewards) / len(total_rewards) if total_rewards else 0.0
+    avg_total_reward = np.mean(episode_total_rewards) if episode_total_rewards else 0.0
+    avg_per_step_reward = np.mean(episode_avg_rewards) if episode_avg_rewards else 0.0
 
     print(f"\n=== Testing Results ===")
     print(f"Method: {method_name}")
@@ -216,7 +257,23 @@ def main():
     else:
         print("Error: Average speed is None. Please check the episode_speeds.")
 
-    print(f"Average Reward: {avg_total_reward:.2f}")
+    print(f"Average Total Reward (per episode): {avg_total_reward:.4f}")
+    print(f"Average Reward (per step): {avg_per_step_reward:.4f}")
+
+    # Print summary for easy copy-paste to table
+    print(f"\n=== Summary for Table ===")
+    print(
+        f"Collision Rate: {collision_rate:.2f}%"
+        if collision_rate is not None
+        else "Collision Rate: N/A"
+    )
+    print(
+        f"Average Speed: {average_speed:.2f} m/s"
+        if average_speed is not None
+        else "Average Speed: N/A"
+    )
+    print(f"Average Total Reward: {avg_total_reward:.4f}")
+    print(f"Average Per-Step Reward: {avg_per_step_reward:.4f}")
 
 
 if __name__ == "__main__":

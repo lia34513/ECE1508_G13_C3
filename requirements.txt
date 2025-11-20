@@ -1,3 +1,8 @@
 gymnasium
 highway-env
+stable_baselines3
+tensorboard
+torch
+numpy
+matplotlib
 rl-agents @ git+https://github.com/eleurent/rl-agents#egg=rl-agents
