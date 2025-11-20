@@ -6,11 +6,11 @@ import numpy as np
 import os
 from rule_based import OPDAgent
 from performance_metrics import get_collision_rate, get_average_speed
-from env_config import get_highway_config
-from stable_baselines3 import DQN
+from env_config import get_highway_config, parse_args
+from stable_baselines3 import DQN, PPO
 
 
-def get_action(env, method=0, model=None, agent=None, obs=None):
+def get_action(env, method=0, agent=None, obs=None):
     """Get action for the environment.
 
     Args:
@@ -18,83 +18,28 @@ def get_action(env, method=0, model=None, agent=None, obs=None):
         method: The policy method to use
             0: OPD (Optimistic Planning)
             1: stable-baselines3 DQN
-        model: DQN model instance (required for method 1)
-        agent: OPD agent instance (required for method 0)
-        obs: Current observation (required for methods 0 and 1)
+            2: stable-baselines3 PPO
+        agent: Agent instance (required for all methods)
+        obs: Current observation (required for all methods)
     """
+    if agent is None or obs is None:
+        print("Error: The method requires agent and observation.")
+        return None
+
     if method == 0:
         # OPD policy
-        if agent is None or obs is None:
-            print("Error: OPD method requires agent and observation.")
-            return None
         return agent.act(obs)
     elif method == 1:
         # DQN policy
-        action, _ = model.predict(obs, deterministic=True)
+        action, _ = agent.predict(obs, deterministic=True)
+        return int(action)
+    elif method == 2:
+        # PPO policy
+        action, _ = agent.predict(obs, deterministic=True)
         return int(action)
 
     print(f"Error: Unknown method {method}.")
     return None
-
-
-def parse_args():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Testing environment")
-    parser.add_argument(
-        "--env",
-        type=str,
-        default="highway",
-        help="Environment name: highway or roundabout",
-    )
-    parser.add_argument(
-        "--render_mode",
-        type=str,
-        default="rgb_array",
-        help="Render mode: rgb_array or human",
-    )
-    parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
-    parser.add_argument(
-        "--method",
-        type=int,
-        default=0,
-        help="0: OPD (Optimistic Planning), 1: stable-baselines3 DQN",
-    )
-    parser.add_argument(
-        "--duration",
-        type=int,
-        default=None,
-        help="The duration of the episode (if not set, uses env_config defaults)",
-    )
-    parser.add_argument(
-        "--high_speed_reward_weight",
-        type=float,
-        default=None,
-        help="Reward weight for the Speed (if not set, uses env_config defaults)",
-    )
-    parser.add_argument(
-        "--collision_reward_weight",
-        type=float,
-        default=None,
-        help="Reward weight for the Collision (if not set, uses env_config defaults)",
-    )
-    parser.add_argument(
-        "--traffic_density",
-        type=float,
-        default=None,
-        help="The density of the traffic (if not set, uses env_config defaults)",
-    )
-    # OPD specific parameters
-    parser.add_argument(
-        "--opd_budget",
-        type=int,
-        default=50,
-        help="OPD planning budget (number of expansions)",
-    )
-    parser.add_argument(
-        "--opd_gamma", type=float, default=0.7, help="OPD discount factor"
-    )
-    return parser.parse_args()
-
 
 def main():
     """Main function to run environment testing."""
@@ -104,6 +49,7 @@ def main():
     method_names = {
         0: "OPD (Optimistic Planning)",
         1: "DQN (Deep Q-Network)",
+        2: "PPO (Proximal Policy Optimization)",
     }
     method_name = method_names.get(args.method, f"Unknown ({args.method})")
 
@@ -147,31 +93,45 @@ def main():
         )
         return
 
-    # Initialize model/agent based on method
-    DQN_model = None
-    OPD_agent = None
+    # Initialize agent based on method
+    agent = None
 
     if args.method == 0:
         # OPD agent
-        OPD_agent = OPDAgent(env, budget=args.opd_budget, gamma=args.opd_gamma)
+        agent = OPDAgent(env, budget=args.opd_budget, gamma=args.opd_gamma)
         print(
             f"OPD Agent initialized with budget={args.opd_budget}, gamma={args.opd_gamma}\n"
         )
 
     elif args.method == 1:
-        # Stable-baselines3 DQN model
         checkpoint_path = os.path.join(
-            "model",
-            "DQN",
-            "checkpoints",
-            f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}",
+            "model", "DQN", "checkpoints",
+            f"dqn_highway_vehicles_density_{config['vehicles_density']}"
+            f"_high_speed_reward_{config['high_speed_reward']}"
+            f"_collision_reward_{config['collision_reward']}"
+        )
+        print(f"[TEST] Loading DQN from: {checkpoint_path}")
+
+        # Load stable-baselines3 DQN agent
+        agent = DQN.load(checkpoint_path, env=env)
+
+    elif args.method == 2:
+        checkpoint_path = os.path.join(
+            "model", "PPO", "checkpoints",
+            f"ppo_highway_vehicles_density_{config['vehicles_density']}"
+            f"_high_speed_reward_{config['high_speed_reward']}"
+            f"_collision_reward_{config['collision_reward']}.zip"
         )
 
-        # Load stable-baselines3 model
-        DQN_model = DQN.load(checkpoint_path, env=env)
-        print(f"DQN model loaded from: {checkpoint_path}\n")
+        print(f"[TEST] Loading PPO from: {checkpoint_path}")
 
-    # Track collisions and speeds
+        if not os.path.exists(checkpoint_path):
+            print(f"[ERROR] PPO checkpoint not found: {checkpoint_path}")
+            return
+
+        # Load stable-baselines3 PPO agent
+        agent = PPO.load(checkpoint_path, env=env)
+
     total_collisions = 0
     total_epochs = 0
     collision_rate = 0
@@ -188,9 +148,7 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
-            action = get_action(
-                env, args.method, model=DQN_model, agent=OPD_agent, obs=obs
-            )
+            action = get_action(env, args.method, agent=agent, obs=obs)
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
