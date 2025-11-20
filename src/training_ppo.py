@@ -2,7 +2,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from env_config import get_highway_config
 import gymnasium
-import highway_env  # noqa: F401  # needed to register env
+import highway_env 
 import os
 
 # Project root directory: parent of src/
@@ -37,12 +37,6 @@ def train_ppo():
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    exp_suffix = (
-        f"vehden_{config.get('vehicles_density', 'NA')}_"
-        f"dur_{config.get('duration', 'NA')}_"
-        f"nenvs_{n_envs}"
-    )
-
     # initialize PPO model
     # NOTE: n_steps is per-env, so total rollout size per update is n_envs * n_steps.
     model = PPO(
@@ -75,7 +69,8 @@ def train_ppo():
 
     # save checkpoint
     checkpoint_path = os.path.join(
-        checkpoint_dir, f"ppo_highway_{exp_suffix}.zip"
+        checkpoint_dir, 
+        f"ppo_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}.zip"
     )
     model.save(checkpoint_path)
     print(f"Saved PPO checkpoint to: {checkpoint_path}")

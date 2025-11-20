@@ -91,10 +91,12 @@ def main():
         DQN_model = DQN.load(checkpoint_path, env=env)
 
     if args.method == 2:
-        vehicles_density = config.get("vehicles_density", "NA")
-        duration = config.get("duration", "NA")
-        ckpt_name = f"ppo_short_highway_vehden_{vehicles_density}_dur_{duration}.zip"
-        checkpoint_path = os.path.join("model", "PPO", "checkpoints", ckpt_name)
+        checkpoint_path = os.path.join(
+            "model", "PPO", "checkpoints",
+            f"ppo_highway_vehicles_density_{config['vehicles_density']}"
+            f"_high_speed_reward_{config['high_speed_reward']}"
+            f"_collision_reward_{config['collision_reward']}.zip"
+        )
 
         print(f"[TEST] Loading PPO from: {checkpoint_path}")
 
