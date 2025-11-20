@@ -67,9 +67,9 @@ Then open the URL (for example http://localhost:6006) in your browser.
 
 The project supports two testing methods:
 
-1. **Method 0**: Fixed speed & keep lane (rule-based baseline)
-   - Maintains the current lane and speed
-   - Use this as a baseline for comparison with learned policies
+1. **Method 0**: OPD (Optimistic Planning)
+   - Uses optimistic planning for decision-making
+   - Configurable with `--opd_budget` and `--opd_gamma` parameters
 
 2. **Method 1**: DQN agent (RL-based)
    - Uses a trained DQN agent for decision-making
@@ -92,16 +92,23 @@ Available options:
   - Common options: `rgb_array`, `human`
 - `--epochs`: Number of epochs to run (default: `100`)
 - `--method`: Testing method to use (default: `0`)
-  - `0`: Fixed speed & keep lane (rule-based baseline)
+  - `0`: OPD (Optimistic Planning)
   - `1`: DQN agent (requires trained checkpoint)
+- `--duration`: The duration of the episode (default: [env_config](src/env_config.py))
+- `--high_speed_reward_weight`: High-speed reward weight (default: [env_config](src/env_config.py))
+- `--collision_reward_weight`: Collision reward weight (default: [env_config](src/env_config.py))
+- `--traffic_density`: The density of the traffic. 1.0 is the default, 1.25 is the high density (default: [env_config](src/env_config.py))
+- `--opd_budget`: OPD planning budget (number of expansions, default: `50`, only for method 0)
+- `--opd_gamma`: OPD discount factor (default: `0.7`, only for method 0)
 
-**Note**: Environment configuration parameters (collision reward weight, high speed reward weight, traffic density, duration) are set in `src/env_config.py` and cannot be changed via command-line arguments.
+**Note**: Environment configuration parameters (collision reward weight, high speed reward weight, traffic density, duration) default to values in `src/env_config.py` but can be overridden via command-line arguments.
 
 ### Examples
 
-**Testing with rule-based baseline (Method 0):**
+**Testing with OPD agent (Method 0):**
 ```bash
-python3 src/testing.py --env highway --render_mode human --epochs 100 --method 0
+# Example of running OPD
+python3 src/testing.py --env highway --method 0 --epochs 20 --render_mode rgb_array
 ```
 
 **Testing with DQN agent (Method 1):**
@@ -112,5 +119,3 @@ python3 src/training_dqn.py
 # Then test with the trained model
 python3 src/testing.py --env highway --render_mode human --epochs 100 --method 1
 ```
-
-
