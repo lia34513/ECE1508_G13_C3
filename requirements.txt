@@ -1,3 +1,3 @@
 gymnasium
 highway-env
-
+rl-agents @ git+https://github.com/eleurent/rl-agents#egg=rl-agents
