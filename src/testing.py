@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import argparse
 import numpy as np
 import os
-from rule_based import fixed_speed_keep_lane, OPDAgent
+from rule_based import OPDAgent
 from performance_metrics import get_collision_rate, get_average_speed
 from env_config import get_highway_config
 from stable_baselines3 import DQN
@@ -16,25 +16,22 @@ def get_action(env, method=0, model=None, agent=None, obs=None):
     Args:
         env: The gymnasium environment
         method: The policy method to use
-            0: fixed_speed_keep_lane (baseline)
+            0: OPD (Optimistic Planning)
             1: stable-baselines3 DQN
-            2: OPD (Optimistic Planning)
         model: DQN model instance (required for method 1)
-        agent: OPD agent instance (required for method 2)
-        obs: Current observation (required for methods 1 and 2)
+        agent: OPD agent instance (required for method 0)
+        obs: Current observation (required for methods 0 and 1)
     """
     if method == 0:
-        return fixed_speed_keep_lane(env)
-    elif method == 1:
-        # DQN policy
-        action, _ = model.predict(obs, deterministic=True)
-        return int(action)
-    elif method == 2:
         # OPD policy
         if agent is None or obs is None:
             print("Error: OPD method requires agent and observation.")
             return None
         return agent.act(obs)
+    elif method == 1:
+        # DQN policy
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
 
     print(f"Error: Unknown method {method}.")
     return None
@@ -60,7 +57,7 @@ def parse_args():
         "--method",
         type=int,
         default=0,
-        help="0: fixed speed & keep lane, 1: stable-baselines3 DQN, 2: OPD (Optimistic Planning)",
+        help="0: OPD (Optimistic Planning), 1: stable-baselines3 DQN",
     )
     parser.add_argument(
         "--duration",
@@ -105,9 +102,8 @@ def main():
 
     # Map method numbers to names
     method_names = {
-        0: "Fixed Speed & Keep Lane",
+        0: "OPD (Optimistic Planning)",
         1: "DQN (Deep Q-Network)",
-        2: "OPD (Optimistic Planning)",
     }
     method_name = method_names.get(args.method, f"Unknown ({args.method})")
 
@@ -133,7 +129,7 @@ def main():
     print(f"Traffic Density: {config['vehicles_density']}")
     print(f"High Speed Reward Weight: {config['high_speed_reward']}")
     print(f"Collision Reward Weight: {config['collision_reward']}")
-    if args.method == 2:
+    if args.method == 0:
         print(f"OPD Budget: {args.opd_budget}")
         print(f"OPD Gamma: {args.opd_gamma}")
     print()
@@ -155,7 +151,14 @@ def main():
     DQN_model = None
     OPD_agent = None
 
-    if args.method == 1:
+    if args.method == 0:
+        # OPD agent
+        OPD_agent = OPDAgent(env, budget=args.opd_budget, gamma=args.opd_gamma)
+        print(
+            f"OPD Agent initialized with budget={args.opd_budget}, gamma={args.opd_gamma}\n"
+        )
+
+    elif args.method == 1:
         # Stable-baselines3 DQN model
         checkpoint_path = os.path.join(
             "model",
@@ -167,13 +170,6 @@ def main():
         # Load stable-baselines3 model
         DQN_model = DQN.load(checkpoint_path, env=env)
         print(f"DQN model loaded from: {checkpoint_path}\n")
-
-    elif args.method == 2:
-        # OPD agent
-        OPD_agent = OPDAgent(env, budget=args.opd_budget, gamma=args.opd_gamma)
-        print(
-            f"OPD Agent initialized with budget={args.opd_budget}, gamma={args.opd_gamma}\n"
-        )
 
     # Track collisions and speeds
     total_collisions = 0
