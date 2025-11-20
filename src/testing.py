@@ -4,20 +4,24 @@ from matplotlib import pyplot as plt
 import argparse
 import numpy as np
 import os
+
 from rule_based import fixed_speed_keep_lane
 from performance_metrics import get_collision_rate, get_average_speed
 from env_config import get_highway_config
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 
 
 def get_action(env, method=0, model=None, obs=None):
-    """Get action for the environment."""
+    """Select an action based on the selected method."""
     if method == 0:
         return fixed_speed_keep_lane(env)
     elif method == 1:
         action, _ = model.predict(obs, deterministic=True)
         return int(action)
-   
+    elif method == 2:
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
+
     print(f"Error: Unknown method {method}.")
     return None
 
@@ -25,10 +29,18 @@ def get_action(env, method=0, model=None, obs=None):
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Testing environment')
-    parser.add_argument('--env', type=str, default='highway', help='Environment name: highway or roundabout')
-    parser.add_argument('--render_mode', type=str, default='rgb_array', help='Render mode: rgb_array or human')
-    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--method', type=int, default=0, help='0: fixed speed & keep lane (default), 1: stable-baselines3 DQN')
+    parser.add_argument('--env', type=str, default='highway',
+                        help='Environment name: highway or roundabout')
+    parser.add_argument('--render_mode', type=str, default='rgb_array',
+                        help='Render mode: rgb_array or human')
+    parser.add_argument('--epochs', type=int, default=100,
+                        help='Number of test episodes')
+    parser.add_argument(
+        '--method',
+        type=int,
+        default=0,
+        help='0: rule-based, 1: DQN, 2: PPO'
+    )
     return parser.parse_args()
 
 
@@ -52,26 +64,54 @@ def main():
 
     # Create environment based on user selection 
     if args.env == "highway":
-        env = gymnasium.make('highway-v0', render_mode=args.render_mode, config=config)
+        env = gymnasium.make('highway-v0',
+                             render_mode=args.render_mode,
+                             config=config)
     elif args.env == "roundabout":
-        env = gymnasium.make('roundabout-v0', render_mode=args.render_mode, config=config)
+        env = gymnasium.make('roundabout-v0',
+                             render_mode=args.render_mode,
+                             config=config)
     else:
-        print(f"Error: Unknown environment '{args.env}'. Available options: highway, roundabout")
+        print(f"Error: Unknown environment '{args.env}'.")
         return
-    
-    # Initialize model based on method
+
     DQN_model = None
-    
+    PPO_model = None
+
     if args.method == 1:
-        # Stable-baselines3 DQN model
-        checkpoint_path = os.path.join("model", "DQN", "checkpoints", 
-                                     f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}")
-        
+        checkpoint_path = os.path.join(
+            "model", "DQN", "checkpoints",
+            f"dqn_highway_vehicles_density_{config['vehicles_density']}"
+            f"_high_speed_reward_{config['high_speed_reward']}"
+            f"_collision_reward_{config['collision_reward']}"
+        )
+        print(f"[TEST] Loading DQN from: {checkpoint_path}")
+
         # Load stable-baselines3 model
         DQN_model = DQN.load(checkpoint_path, env=env)
-  
-    
-    # Track collisions and speeds
+
+    if args.method == 2:
+        checkpoint_path = os.path.join(
+            "model", "PPO", "checkpoints",
+            f"ppo_highway_vehicles_density_{config['vehicles_density']}"
+            f"_high_speed_reward_{config['high_speed_reward']}"
+            f"_collision_reward_{config['collision_reward']}.zip"
+        )
+
+        print(f"[TEST] Loading PPO from: {checkpoint_path}")
+
+        if not os.path.exists(checkpoint_path):
+            print(f"[ERROR] PPO checkpoint not found: {checkpoint_path}")
+            return
+
+        PPO_model = PPO.load(checkpoint_path, env=env)
+
+    current_model = None
+    if args.method == 1:
+        current_model = DQN_model
+    elif args.method == 2:
+        current_model = PPO_model
+
     total_collisions = 0
     total_epochs = 0
     collision_rate = 0
@@ -87,12 +127,12 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
-            action = get_action(env, args.method, model=DQN_model, obs=obs)
+            action = get_action(env, args.method, model=current_model, obs=obs)
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
             obs, reward, done, truncated, info = env.step(action)
-            
+
             epoch_reward += reward
             epoch_steps += 1
           
@@ -122,7 +162,8 @@ def main():
 
         # Display crashed state and performance for each epoch
         crashed_status = "CRASHED" if crashed else "OK"
-        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Average reward: {avg_reward:.4f}")
+        print(f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, "
+              f"Average reward: {avg_reward:.4f}")
 
     # Calculate and display metrics
     collision_rate = get_collision_rate(total_collisions, total_epochs)
