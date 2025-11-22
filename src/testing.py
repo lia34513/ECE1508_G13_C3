@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 import os
 from rule_based import OPDAgent
-from performance_metrics import get_collision_rate, get_average_speed
+from performance_metrics import get_collision_rate, get_collision_rate_per_action, get_average_speed
 from env_config import get_highway_config, parse_args
 from stable_baselines3 import DQN, PPO
 
@@ -134,10 +134,12 @@ def main():
 
     total_collisions = 0
     total_epochs = 0
-    collision_rate = 0
+    total_actions = 0
+    total_reward = 0.0
+    collision_rate_per_episode = 0
+    collision_rate_per_action = 0
     episode_speeds = []
     episode_total_rewards = []  # Total reward per episode
-    episode_avg_rewards = []    # Average reward per step per episode
 
     for epoch_num in range(args.epochs):
         obs, info = env.reset()
@@ -155,7 +157,9 @@ def main():
             obs, reward, done, truncated, info = env.step(action)
 
             epoch_reward += reward
+            total_reward += reward
             epoch_steps += 1
+            total_actions += 1
 
             # Record the ego vehicle speed if available in info.
             ego_speed = info.get("speed")
@@ -178,56 +182,42 @@ def main():
         if crashed:
             total_collisions += 1
 
-        avg_reward = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
         episode_total_rewards.append(epoch_reward)
-        episode_avg_rewards.append(avg_reward)
 
         # Display crashed state and performance for each epoch
+        avg_reward_per_action = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
         crashed_status = "CRASHED" if crashed else "OK"
         print(
-            f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Total reward: {epoch_reward:.2f}, Avg reward: {avg_reward:.4f}"
+            f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Total reward: {epoch_reward:.2f}, Avg reward per action: {avg_reward_per_action:.4f}"
         )
 
     # Calculate and display metrics
-    collision_rate = get_collision_rate(total_collisions, total_epochs)
+    collision_rate_per_episode = get_collision_rate(total_collisions, total_epochs)
+    collision_rate_per_action = get_collision_rate_per_action(total_collisions, total_actions)
     average_speed = get_average_speed(episode_speeds)
-    avg_total_reward = np.mean(episode_total_rewards) if episode_total_rewards else 0.0
-    avg_per_step_reward = np.mean(episode_avg_rewards) if episode_avg_rewards else 0.0
+    avg_reward_per_episode = np.mean(episode_total_rewards) if episode_total_rewards else 0.0
+    avg_reward_per_action = total_reward / total_actions if total_actions > 0 else 0.0
 
-    print(f"\n=== Testing Results ===")
-    print(f"Method: {method_name}")
-    print(f"Total epochs: {total_epochs}")
-    print(f"Collisions: {total_collisions}")
-
-    if collision_rate is not None:
-        print(f"Collision Rate: {collision_rate:.2f}%")
-    else:
-        print(
-            "Error: Collision rate is None. Please check the total_collisions and total_epochs."
-        )
-
-    if average_speed is not None:
-        print(f"Average Speed: {average_speed:.2f} m/s")
-    else:
-        print("Error: Average speed is None. Please check the episode_speeds.")
-
-    print(f"Average Total Reward (per episode): {avg_total_reward:.4f}")
-    print(f"Average Reward (per step): {avg_per_step_reward:.4f}")
 
     # Print summary for easy copy-paste to table
-    print(f"\n=== Summary for Table ===")
+    print(f"\n=== Testing Results ===")
     print(
-        f"Collision Rate: {collision_rate:.2f}%"
-        if collision_rate is not None
-        else "Collision Rate: N/A"
+        f"Collision Rate (per episode): {collision_rate_per_episode:.2f}%"
+        if collision_rate_per_episode is not None
+        else "Collision Rate (per episode): N/A"
     )
+    print(
+        f"Collision Rate (per action): {collision_rate_per_action:.4f}%"
+        if collision_rate_per_action is not None
+        else "Collision Rate (per action): N/A"
+    )
+    print(f"Average Reward (per episode): {avg_reward_per_episode:.4f}")
+    print(f"Average Reward (per action): {avg_reward_per_action:.4f}")
     print(
         f"Average Speed: {average_speed:.2f} m/s"
         if average_speed is not None
         else "Average Speed: N/A"
     )
-    print(f"Average Total Reward: {avg_total_reward:.4f}")
-    print(f"Average Per-Step Reward: {avg_per_step_reward:.4f}")
 
 
 if __name__ == "__main__":

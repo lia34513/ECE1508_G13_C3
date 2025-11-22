@@ -20,6 +20,21 @@ def get_collision_rate(total_collisions: int, total_epochs: int) -> Optional[flo
     return (total_collisions / total_epochs) * 100.0
 
 
+def get_collision_rate_per_action(total_collisions: int, total_actions: int) -> Optional[float]:
+    """Compute the collision rate per action (percentage) given collisions and actions.
+
+    Args:
+        total_collisions: Number of epochs where a collision occurred.
+        total_actions: Total number of actions taken.
+
+    Returns:
+        Collision rate per action as a percentage (float) if total_actions > 0, otherwise None.
+    """
+    if total_actions <= 0:
+        return None
+    return (total_collisions / total_actions) * 100.0
+
+
 def get_average_speed(episode_speeds: List[List[float]]) -> Optional[float]:
     """Compute average speed across episodes.
 
