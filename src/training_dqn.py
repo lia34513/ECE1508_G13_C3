@@ -40,8 +40,10 @@ def train_dqn(n_envs: int = 1):
         # Use single environment
         env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
     
-    # Create evaluation environment
+    # Create evaluation environment with same seed as testing.py for consistency
+    # This ensures evaluation during training uses the same scenarios
     eval_env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
+    eval_env.reset(seed=1000)
     
     # Set up directories (under project root: model/DQN/...)
     model_dir = os.path.join(BASE_DIR, "model", "DQN")

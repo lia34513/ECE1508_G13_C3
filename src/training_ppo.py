@@ -43,7 +43,8 @@ def train_ppo(n_envs: int = 8):
     checkpoint_dir = os.path.join(model_dir, "checkpoints")
 
     # create evaluation environment (single env for evaluation)
-    eval_env = DummyVecEnv([make_env_fn(seed=n_envs)])
+    # Use same seed for consistency
+    eval_env = DummyVecEnv([make_env_fn(seed=1000)])
 
     # total timesteps is counted across all envs
     total_timesteps = int(2e4)
