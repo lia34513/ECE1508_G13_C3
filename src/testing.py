@@ -66,12 +66,17 @@ def main():
     if args.duration is not None:
         config["duration"] = args.duration
 
+    # Fixed random seed for reproducibility and fair comparison across agents
+    # All agents will see the same sequence of initial states for each epoch
+    fixed_seed = 42
+    
     # Print settings at the beginning
     print(f"=== Testing Settings ===")
     print(f"Environment: {args.env}")
     print(f"Duration: {config['duration']}s")
     print(f"Epochs: {args.epochs}")
     print(f"Method: {method_name}")
+    print(f"Random Seed: {fixed_seed} (deterministic per epoch for fair comparison across agents)")
     print(f"Traffic Density: {config['vehicles_density']}")
     print(f"High Speed Reward Weight: {config['high_speed_reward']}")
     print(f"Collision Reward Weight: {config['collision_reward']}")
@@ -81,6 +86,7 @@ def main():
     print()
 
     # Create environment based on user selection
+    # Set seed for environment initialization
     if args.env == "highway":
         env = gymnasium.make("highway-v0", render_mode=args.render_mode, config=config)
     elif args.env == "roundabout":
@@ -92,6 +98,10 @@ def main():
             f"Error: Unknown environment '{args.env}'. Available options: highway, roundabout"
         )
         return
+    
+    # Set the random seed for numpy and the environment for reproducibility
+    np.random.seed(fixed_seed)
+    env.reset(seed=fixed_seed)
 
     # Initialize agent based on method
     agent = None
@@ -142,7 +152,10 @@ def main():
     episode_total_rewards = []  # Total reward per episode
 
     for epoch_num in range(args.epochs):
-        obs, info = env.reset()
+        # Use deterministic seed for each epoch based on epoch number
+        # This ensures all agents see the same sequence of environments
+        epoch_seed = fixed_seed + epoch_num
+        obs, info = env.reset(seed=epoch_seed)
 
         epoch_reward = 0.0
         epoch_steps = 0
