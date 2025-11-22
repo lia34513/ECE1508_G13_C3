@@ -5,6 +5,8 @@ from callbacks import create_training_callbacks
 import gymnasium
 import highway_env 
 import os
+import argparse
+import torch
 
 # Project root directory: parent of src/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,9 +26,13 @@ def make_env_fn(seed: int):
     return _init
 
 
-def train_ppo():
-    # number of parallel environments
-    n_envs = 8
+def train_ppo(n_envs: int = 8):
+    """
+    Train PPO model.
+    
+    Args:
+        n_envs: Number of parallel environments (default: 8)
+    """
 
     # create vectorized environment with multiple processes
     env = SubprocVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
@@ -75,6 +81,13 @@ def train_ppo():
         tensorboard_log=log_dir,
     )
 
+    # Check and report device being used
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
+    
     print(
         f"Start parallel PPO training for {total_timesteps} timesteps "
         f"with n_envs={n_envs}..."
@@ -96,5 +109,19 @@ def train_ppo():
     eval_env.close()
 
 
+def main():
+    """Main function to parse arguments and run training."""
+    parser = argparse.ArgumentParser(description="Train PPO model for highway-v0 environment")
+    parser.add_argument(
+        "--n_envs",
+        type=int,
+        default=8,
+        help="Number of parallel environments (default: 8)"
+    )
+    
+    args = parser.parse_args()
+    train_ppo(n_envs=args.n_envs)
+
+
 if __name__ == "__main__":
-    train_ppo()
+    main()

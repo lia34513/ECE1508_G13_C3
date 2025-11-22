@@ -52,6 +52,25 @@ To train a DQN agent on the highway-v0 environment:
 python3 src/training_dqn.py
 ```
 
+Available options:
+- `--n_envs`: Number of parallel environments (default: `1`)
+  - Using multiple environments can speed up training but uses more memory
+  - Example: `python3 src/training_dqn.py --n_envs 4`
+
+### Training PPO Agent
+
+To train a PPO agent on the highway-v0 environment:
+
+```bash
+python3 src/training_ppo.py
+```
+
+Available options:
+- `--n_envs`: Number of parallel environments (default: `8`)
+  - PPO is designed to work well with parallel environments
+  - Using more environments can speed up training but uses more resources
+  - Example: `python3 src/training_ppo.py --n_envs 16`
+
 ### Viewing Training Logs with TensorBoard
 
 Reward/loss curves and Stable-Baselines3 logs are written under `model/DQN/Logs`.  
