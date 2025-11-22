@@ -1,5 +1,5 @@
 from stable_baselines3 import DQN
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from env_config import get_highway_config
 from callbacks import create_training_callbacks
 import gymnasium

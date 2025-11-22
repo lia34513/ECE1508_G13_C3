@@ -17,10 +17,9 @@ config = get_highway_config()
 def make_env_fn(seed: int):
     """
     Factory function to create a single highway-v0 environment.
-    Used by SubprocVecEnv to create multiple parallel environments.
     """
     def _init():
-        env = gymnasium.make("highway-v0", config=config)
+        env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
         env.reset(seed=seed)
         return env
     return _init
@@ -34,8 +33,14 @@ def train_ppo(n_envs: int = 8):
         n_envs: Number of parallel environments (default: 8)
     """
 
-    # create vectorized environment with multiple processes
-    env = SubprocVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
+   
+    # Create training environment(s)
+    if n_envs > 1:
+        # Use vectorized environment for multiple parallel envs
+        env = DummyVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
+    else:
+        # Use single environment
+        env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
 
     # log and checkpoint directories (under project root: model/PPO/...)
     model_dir = os.path.join(BASE_DIR, "model", "PPO")
@@ -44,7 +49,8 @@ def train_ppo(n_envs: int = 8):
 
     # create evaluation environment (single env for evaluation)
     # Use same seed for consistency
-    eval_env = DummyVecEnv([make_env_fn(seed=1000)])
+    eval_env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
+    eval_env.reset(seed=1000)
 
     # total timesteps is counted across all envs
     total_timesteps = int(2e4)
