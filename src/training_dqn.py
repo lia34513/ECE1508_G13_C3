@@ -1,5 +1,6 @@
 from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines3.common.monitor import Monitor
 from env_config import get_highway_config
 from callbacks import create_training_callbacks
 import gymnasium
@@ -17,10 +18,13 @@ config = get_highway_config()
 def make_env_fn(seed: int):
     """
     Factory function to create a single highway-v0 environment.
+    Wrapped with Monitor to track episode statistics (ep_len_mean, ep_rew_mean).
     """
     def _init():
         env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
         env.reset(seed=seed)
+        # Wrap with Monitor to enable episode statistics tracking
+        env = Monitor(env)
         return env
     return _init
 
@@ -37,13 +41,16 @@ def train_dqn(n_envs: int = 1):
         # Use vectorized environment for multiple parallel envs
         env = DummyVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
     else:
-        # Use single environment
+        # Use single environment with Monitor wrapper for episode statistics
         env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
+        env = Monitor(env)
     
     # Create evaluation environment with same seed as testing.py for consistency
     # This ensures evaluation during training uses the same scenarios
+    # Wrap with Monitor to track evaluation episode statistics
     eval_env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
     eval_env.reset(seed=1000)
+    eval_env = Monitor(eval_env)
     
     # Set up directories (under project root: model/DQN/...)
     model_dir = os.path.join(BASE_DIR, "model", "DQN")
