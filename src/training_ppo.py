@@ -53,10 +53,10 @@ def train_ppo(n_envs: int = 8):
     eval_env.reset(seed=1000)
 
     # total timesteps is counted across all envs
-    total_timesteps = int(2e4)
+    total_timesteps = int(2e6)
     
-    # Calculate eval_freq as total_timesteps / 10 (evaluate and save checkpoint every 10% of training)
-    eval_freq = max(1, int(total_timesteps / 10))
+    # Evaluation frequency (default from callbacks.py)
+    eval_freq = int(1e4)  # 10,000 steps
 
     # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
@@ -99,7 +99,7 @@ def train_ppo(n_envs: int = 8):
         f"Start parallel PPO training for {total_timesteps} timesteps "
         f"with n_envs={n_envs}..."
     )
-    print(f"Evaluation and checkpoint every {eval_freq} steps (every 10% of training)...")
+    print(f"Evaluation and checkpoint every {eval_freq} steps...")
     model.learn(total_timesteps=total_timesteps, callback=callbacks)
     print("PPO training finished.")
 

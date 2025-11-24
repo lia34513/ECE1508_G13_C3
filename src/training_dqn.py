@@ -51,10 +51,11 @@ def train_dqn(n_envs: int = 1):
     log_dir = os.path.join(model_dir, "logs")
     
     # Total training timesteps
-    total_timesteps = int(2e4)
+    total_timesteps = int(2e6)
     
-    # Calculate eval_freq as total_timesteps / 10 (evaluate and save checkpoint every 10% of training)
-    eval_freq = max(1, int(total_timesteps / 10))
+    
+    # Evaluation frequency (default from callbacks.py)
+    eval_freq = int(1e4)  # 10,000 steps
     
     # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
