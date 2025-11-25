@@ -22,7 +22,6 @@ def make_env_fn(seed: int):
     """
     def _init():
         env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
-        env.reset(seed=seed)
         # Wrap with Monitor to enable episode statistics tracking
         env = Monitor(env)
         return env
@@ -62,7 +61,7 @@ def train_dqn(n_envs: int = 1):
     
     
     # Evaluation frequency (default from callbacks.py)
-    eval_freq = int(1e4)  # 10,000 steps
+    eval_freq = int(1e3)  # 1,000 steps
     
     # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
@@ -71,20 +70,20 @@ def train_dqn(n_envs: int = 1):
         checkpoint_dir=checkpoint_dir,
         log_dir=log_dir,
         eval_freq=eval_freq,
-        n_eval_episodes=10,
+        n_eval_episodes=100,
     )
     
     model = DQN('MlpPolicy', env,
                     policy_kwargs=dict(net_arch=[256, 256]),
                     learning_rate=5e-4,
-                    buffer_size=15000,
-                    learning_starts=200,
+                    buffer_size=50000,
+                    learning_starts=500,
                     batch_size=32,
-                    gamma=0.8,
+                    gamma=0.95,
                     train_freq=1,
                     gradient_steps=1,
                     target_update_interval=50,
-                    exploration_fraction=0.7,
+                    exploration_fraction=0.5,
                     verbose=1,
                     tensorboard_log=os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}"))
     

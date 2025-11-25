@@ -22,7 +22,6 @@ def make_env_fn(seed: int):
     """
     def _init():
         env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
-        env.reset(seed=seed)
         # Wrap with Monitor to enable episode statistics tracking
         env = Monitor(env)
         return env
@@ -63,7 +62,7 @@ def train_ppo(n_envs: int = 8):
     total_timesteps = int(2e6)
     
     # Evaluation frequency (default from callbacks.py)
-    eval_freq = int(1e4)  # 10,000 steps
+    eval_freq = int(1e3)  # 1,000 steps
 
     # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
@@ -72,7 +71,7 @@ def train_ppo(n_envs: int = 8):
         checkpoint_dir=checkpoint_dir,
         log_dir=log_dir,
         eval_freq=eval_freq,
-        n_eval_episodes=10,
+        n_eval_episodes=100,
     )
 
     # initialize PPO model
@@ -82,7 +81,7 @@ def train_ppo(n_envs: int = 8):
         env,
         policy_kwargs=dict(net_arch=[256, 256]),
         learning_rate=5e-4,
-        n_steps=2048,      # per env → total batch = n_envs * n_steps
+        n_steps=1024,      # per env → total batch = n_envs * n_steps
         batch_size=64,
         n_epochs=10,
         gamma=0.99,
