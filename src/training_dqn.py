@@ -1,5 +1,6 @@
 from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines3.common.monitor import Monitor
 from env_config import get_highway_config
 from callbacks import create_training_callbacks
 import gymnasium
@@ -17,10 +18,12 @@ config = get_highway_config()
 def make_env_fn(seed: int):
     """
     Factory function to create a single highway-v0 environment.
+    Wrapped with Monitor to track episode statistics (ep_len_mean, ep_rew_mean).
     """
     def _init():
         env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
-        env.reset(seed=seed)
+        # Wrap with Monitor to enable episode statistics tracking
+        env = Monitor(env)
         return env
     return _init
 
@@ -37,13 +40,16 @@ def train_dqn(n_envs: int = 1):
         # Use vectorized environment for multiple parallel envs
         env = DummyVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
     else:
-        # Use single environment
+        # Use single environment with Monitor wrapper for episode statistics
         env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
+        env = Monitor(env)
     
     # Create evaluation environment with same seed as testing.py for consistency
     # This ensures evaluation during training uses the same scenarios
+    # Wrap with Monitor to track evaluation episode statistics
     eval_env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
     eval_env.reset(seed=1000)
+    eval_env = Monitor(eval_env)
     
     # Set up directories (under project root: model/DQN/...)
     model_dir = os.path.join(BASE_DIR, "model", "DQN")
@@ -55,7 +61,7 @@ def train_dqn(n_envs: int = 1):
     
     
     # Evaluation frequency (default from callbacks.py)
-    eval_freq = int(1e4)  # 10,000 steps
+    eval_freq = int(1e3)  # 1,000 steps
     
     # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
@@ -64,20 +70,20 @@ def train_dqn(n_envs: int = 1):
         checkpoint_dir=checkpoint_dir,
         log_dir=log_dir,
         eval_freq=eval_freq,
-        n_eval_episodes=10,
+        n_eval_episodes=100,
     )
     
     model = DQN('MlpPolicy', env,
                     policy_kwargs=dict(net_arch=[256, 256]),
                     learning_rate=5e-4,
-                    buffer_size=15000,
-                    learning_starts=200,
+                    buffer_size=50000,
+                    learning_starts=500,
                     batch_size=32,
-                    gamma=0.8,
+                    gamma=0.95,
                     train_freq=1,
                     gradient_steps=1,
                     target_update_interval=50,
-                    exploration_fraction=0.7,
+                    exploration_fraction=0.5,
                     verbose=1,
                     tensorboard_log=os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}"))
     

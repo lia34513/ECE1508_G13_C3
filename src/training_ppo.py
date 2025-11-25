@@ -1,5 +1,6 @@
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+from stable_baselines3.common.monitor import Monitor
 from env_config import get_highway_config
 from callbacks import create_training_callbacks
 import gymnasium
@@ -17,10 +18,12 @@ config = get_highway_config()
 def make_env_fn(seed: int):
     """
     Factory function to create a single highway-v0 environment.
+    Wrapped with Monitor to track episode statistics (ep_len_mean, ep_rew_mean).
     """
     def _init():
         env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
-        env.reset(seed=seed)
+        # Wrap with Monitor to enable episode statistics tracking
+        env = Monitor(env)
         return env
     return _init
 
@@ -39,8 +42,9 @@ def train_ppo(n_envs: int = 8):
         # Use vectorized environment for multiple parallel envs
         env = DummyVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
     else:
-        # Use single environment
+        # Use single environment with Monitor wrapper for episode statistics
         env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
+        env = Monitor(env)
 
     # log and checkpoint directories (under project root: model/PPO/...)
     model_dir = os.path.join(BASE_DIR, "model", "PPO")
@@ -49,14 +53,16 @@ def train_ppo(n_envs: int = 8):
 
     # create evaluation environment (single env for evaluation)
     # Use same seed for consistency
+    # Wrap with Monitor to track evaluation episode statistics
     eval_env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
     eval_env.reset(seed=1000)
+    eval_env = Monitor(eval_env)
 
     # total timesteps is counted across all envs
     total_timesteps = int(2e6)
     
     # Evaluation frequency (default from callbacks.py)
-    eval_freq = int(1e4)  # 10,000 steps
+    eval_freq = int(1e3)  # 1,000 steps
 
     # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
@@ -65,7 +71,7 @@ def train_ppo(n_envs: int = 8):
         checkpoint_dir=checkpoint_dir,
         log_dir=log_dir,
         eval_freq=eval_freq,
-        n_eval_episodes=10,
+        n_eval_episodes=100,
     )
 
     # initialize PPO model
@@ -75,7 +81,7 @@ def train_ppo(n_envs: int = 8):
         env,
         policy_kwargs=dict(net_arch=[256, 256]),
         learning_rate=5e-4,
-        n_steps=2048,      # per env → total batch = n_envs * n_steps
+        n_steps=1024,      # per env → total batch = n_envs * n_steps
         batch_size=64,
         n_epochs=10,
         gamma=0.99,
