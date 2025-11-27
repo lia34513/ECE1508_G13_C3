@@ -3,4 +3,7 @@ __pycache__/
 *.pyc
 model/PPO/checkpoints/
 model/DQN/checkpoints/
+<<<<<<< HEAD
 *.npz  
+=======
+>>>>>>> afccb59b58964a9e3526343cde30e3176af47e7b
