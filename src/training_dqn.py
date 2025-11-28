@@ -28,12 +28,13 @@ def make_env_fn(seed: int):
     return _init
 
 
-def train_dqn(n_envs: int = 1):
+def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN"):
     """
     Train DQN model.
     
     Args:
         n_envs: Number of parallel environments (default: 1)
+        model_dir_name: Name of the directory to save models and logs (default: "DQN")
     """
     # Create training environment(s)
     if n_envs > 1:
@@ -51,13 +52,13 @@ def train_dqn(n_envs: int = 1):
     eval_env.reset(seed=1000)
     eval_env = Monitor(eval_env)
     
-    # Set up directories (under project root: model/DQN/...)
-    model_dir = os.path.join(BASE_DIR, "model", "DQN")
+    # Set up directories (under project root: model/{model_dir_name}/...)
+    model_dir = os.path.join(BASE_DIR, "model", model_dir_name)
     checkpoint_dir = os.path.join(model_dir, "checkpoints")
     log_dir = os.path.join(model_dir, "logs")
     
     # Total training timesteps
-    total_timesteps = int(2e6)
+    total_timesteps = int(6e5)
     
     
     # Evaluation frequency (default from callbacks.py)
@@ -71,6 +72,7 @@ def train_dqn(n_envs: int = 1):
         log_dir=log_dir,
         eval_freq=eval_freq,
         n_eval_episodes=100,
+        total_timesteps=total_timesteps,
     )
     
     model = DQN('MlpPolicy', env,
@@ -94,10 +96,13 @@ def train_dqn(n_envs: int = 1):
         print(f"GPU: {torch.cuda.get_device_name(0)}")
         print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
     
+    print(f"Model directory: {model_dir}")
     env_info = f"with {n_envs} parallel environment(s)" if n_envs > 1 else "with single environment"
     print(f"Starting DQN training for {total_timesteps} timesteps {env_info}...")
     print(f"Evaluation and checkpoint every {eval_freq} steps...")
-    model.learn(total_timesteps, callback=callbacks)
+    
+    # Continue training with callbacks
+    model.learn(total_timesteps, callback=callbacks) 
     
     # Save final checkpoint
     checkpoint_path = os.path.join(checkpoint_dir, f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}_final.zip")
@@ -118,9 +123,15 @@ def main():
         default=1,
         help="Number of parallel environments (default: 1)"
     )
+    parser.add_argument(
+        "--model_dir",
+        type=str,
+        default="DQN",
+        help="Name of the directory to save models and logs (default: 'DQN')"
+    )
     
     args = parser.parse_args()
-    train_dqn(n_envs=args.n_envs)
+    train_dqn(n_envs=args.n_envs, model_dir_name=args.model_dir)
 
 
 if __name__ == "__main__":
