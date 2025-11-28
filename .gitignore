@@ -4,3 +4,4 @@ __pycache__/
 model/PPO/checkpoints/
 model/DQN/checkpoints/
 *.DS_Store
+*.npz  
