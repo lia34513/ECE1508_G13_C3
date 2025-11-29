@@ -1,4 +1,7 @@
 .vs/
 __pycache__/
 *.pyc
-*.npz  
+model/PPO/checkpoints/
+model/DQN/checkpoints/
+*.DS_Store
+*.npz
