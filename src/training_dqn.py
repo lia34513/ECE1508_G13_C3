@@ -28,13 +28,14 @@ def make_env_fn(seed: int):
     return _init
 
 
-def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN"):
+def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN", resume_from: str = None):
     """
     Train DQN model.
     
     Args:
         n_envs: Number of parallel environments (default: 1)
         model_dir_name: Name of the directory to save models and logs (default: "DQN")
+        resume_from: Path to checkpoint to resume training from (default: None)
     """
     # Create training environment(s)
     if n_envs > 1:
@@ -75,19 +76,38 @@ def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN"):
         total_timesteps=total_timesteps,
     )
     
-    model = DQN('MlpPolicy', env,
-                    policy_kwargs=dict(net_arch=[256, 256]),
-                    learning_rate=5e-4,
-                    buffer_size=50000,
-                    learning_starts=500,
-                    batch_size=32,
-                    gamma=0.95,
-                    train_freq=1,
-                    gradient_steps=1,
-                    target_update_interval=50,
-                    exploration_fraction=0.5,
-                    verbose=1,
-                    tensorboard_log=os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}"))
+    # Check if resuming from checkpoint
+    if resume_from:
+        print(f"Loading model from checkpoint: {resume_from}")
+        model = DQN.load(resume_from, env=env)
+        # Update tensorboard log path to continue logging
+        model.tensorboard_log = os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}")
+        print(f"Successfully loaded checkpoint!")
+        print(f"Current timesteps completed: {model.num_timesteps}")
+        remaining_timesteps = total_timesteps - model.num_timesteps
+        if remaining_timesteps <= 0:
+            print(f"Warning: Model has already completed {model.num_timesteps} timesteps (target: {total_timesteps})")
+            print("No additional training needed.")
+            env.close()
+            eval_env.close()
+            return
+        print(f"Will train for {remaining_timesteps} more timesteps to reach {total_timesteps} total.")
+    else:
+        # Create new model from scratch
+        model = DQN('MlpPolicy', env,
+                        policy_kwargs=dict(net_arch=[256, 256]),
+                        learning_rate=5e-4,
+                        buffer_size=50000,
+                        learning_starts=500,
+                        batch_size=32,
+                        gamma=0.99,  # Modified from 0.95 to 0.99
+                        train_freq=1,
+                        gradient_steps=1,
+                        target_update_interval=50,
+                        exploration_fraction=0.5,
+                        verbose=1,
+                        tensorboard_log=os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}"))
+        remaining_timesteps = total_timesteps
     
     # Check and report device being used
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -98,11 +118,11 @@ def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN"):
     
     print(f"Model directory: {model_dir}")
     env_info = f"with {n_envs} parallel environment(s)" if n_envs > 1 else "with single environment"
-    print(f"Starting DQN training for {total_timesteps} timesteps {env_info}...")
+    print(f"Starting DQN training for {remaining_timesteps} timesteps {env_info}...")
     print(f"Evaluation and checkpoint every {eval_freq} steps...")
     
     # Continue training with callbacks
-    model.learn(total_timesteps, callback=callbacks) 
+    model.learn(remaining_timesteps, callback=callbacks) 
     
     # Save final checkpoint
     checkpoint_path = os.path.join(checkpoint_dir, f"dqn_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}_final.zip")
@@ -129,9 +149,15 @@ def main():
         default="DQN",
         help="Name of the directory to save models and logs (default: 'DQN')"
     )
+    parser.add_argument(
+        "--resume_from",
+        type=str,
+        default=None,
+        help="Path to checkpoint file to resume training from (e.g., model/DQN/checkpoints/rl_model_495000_steps.zip)"
+    )
     
     args = parser.parse_args()
-    train_dqn(n_envs=args.n_envs, model_dir_name=args.model_dir)
+    train_dqn(n_envs=args.n_envs, model_dir_name=args.model_dir, resume_from=args.resume_from)
 
 
 if __name__ == "__main__":
