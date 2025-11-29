@@ -120,27 +120,13 @@ def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN", resume_from: str = N
         )
 
     print(f"Model directory: {model_dir}")
-<<<<<<< HEAD
-    env_info = (
-        f"with {n_envs} parallel environment(s)"
-        if n_envs > 1
-        else "with single environment"
-    )
-    print(f"Starting DQN training for {total_timesteps} timesteps {env_info}...")
-=======
     env_info = f"with {n_envs} parallel environment(s)" if n_envs > 1 else "with single environment"
     print(f"Starting DQN training for {remaining_timesteps} timesteps {env_info}...")
->>>>>>> faea3edd79f17e00239d72c23f43b41cb2e51e9f
     print(f"Evaluation and checkpoint every {eval_freq} steps...")
 
     # Continue training with callbacks
-<<<<<<< HEAD
-    model.learn(total_timesteps, callback=callbacks)
-
-=======
     model.learn(remaining_timesteps, callback=callbacks) 
     
->>>>>>> faea3edd79f17e00239d72c23f43b41cb2e51e9f
     # Save final checkpoint
     checkpoint_path = os.path.join(
         checkpoint_dir,
@@ -171,9 +157,6 @@ def main():
         default="DQN",
         help="Name of the directory to save models and logs (default: 'DQN')",
     )
-<<<<<<< HEAD
-
-=======
     parser.add_argument(
         "--resume_from",
         type=str,
@@ -181,7 +164,6 @@ def main():
         help="Path to checkpoint file to resume training from (e.g., model/DQN/checkpoints/rl_model_495000_steps.zip)"
     )
     
->>>>>>> faea3edd79f17e00239d72c23f43b41cb2e51e9f
     args = parser.parse_args()
     train_dqn(n_envs=args.n_envs, model_dir_name=args.model_dir, resume_from=args.resume_from)
 
