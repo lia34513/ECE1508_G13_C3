@@ -177,6 +177,12 @@ Available options:
   - `0`: OPD (Optimistic Planning)
   - `1`: DQN agent (requires trained checkpoint)
   - `2`: PPO agent (requires trained checkpoint)
+- `--checkpoint_path`: Path to checkpoint file (for method 1 or 2)
+  - If provided, uses the specified checkpoint file
+  - If not provided, uses default paths:
+    - Method 1 (DQN): `model/DQN_buffer_size_50000/checkpoints/best_model.zip`
+    - Method 2 (PPO): `model/PPO_vehicles_density_1_high_speed_reward_0.4_collision_reward_-1/best_model.zip`
+  - Example: `--checkpoint_path model/DQN/checkpoints/best_model.zip`
 - `--duration`: The duration of the episode (default: [env_config](src/env_config.py))
 - `--high_speed_reward_weight`: High-speed reward weight (default: [env_config](src/env_config.py))
 - `--collision_reward_weight`: Collision reward weight (default: [env_config](src/env_config.py))
@@ -196,18 +202,24 @@ python3 src/testing.py --env highway --method 0 --epochs 20 --render_mode rgb_ar
 
 **Testing with DQN agent (Method 1):**
 ```bash
-# First, ensure you have trained a DQN model
-python3 src/training_dqn.py --model_dir DQN_baseline
-
-# Then test with the trained model
+# Using default checkpoint path
 python3 src/testing.py --env highway --render_mode human --epochs 100 --method 1
+
+# Using custom checkpoint path
+python3 src/testing.py --env highway --render_mode human --epochs 100 --method 1 --checkpoint_path model/DQN/checkpoints/best_model.zip
 ```
 
 **Testing with PPO agent (Method 2):**
 ```bash
-# First, ensure you have trained a PPO model
-python3 src/training_ppo.py --model_dir PPO_baseline
-
-# Then test with the trained model
+# Using default checkpoint path
 python3 src/testing.py --env highway --render_mode human --epochs 100 --method 2
+
+# Using custom checkpoint path
+python3 src/testing.py --env highway --render_mode human --epochs 100 --method 2 --checkpoint_path model/PPO/checkpoints/best_model.zip
+```
+
+**Testing with custom checkpoint:**
+```bash
+# Test with a specific checkpoint file
+python3 src/testing.py --method 1 --checkpoint_path model/DQN_experiment1/checkpoints/dqn_checkpoint_100000_steps.zip --epochs 50
 ```

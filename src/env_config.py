@@ -42,6 +42,13 @@ def parse_args():
         help="0: OPD (Optimistic Planning), 1: stable-baselines3 DQN, 2: stable-baselines3 PPO",
     )
     parser.add_argument(
+        "--checkpoint_path",
+        type=str,
+        default=None,
+        help="Path to checkpoint file (for method 1 or 2). If not provided, uses default path based on config.",
+    )
+    
+    parser.add_argument(
         "--duration",
         type=int,
         default=None,

@@ -114,33 +114,47 @@ def main():
         )
 
     elif args.method == 1:
-        checkpoint_path = os.path.join(
-            "model", "DQN", "checkpoints",
-            f"dqn_highway_vehicles_density_{config['vehicles_density']}"
-            f"_high_speed_reward_{config['high_speed_reward']}"
-            f"_collision_reward_{config['collision_reward']}"
-        )
-        print(f"[TEST] Loading DQN from: {checkpoint_path}")
+        # DQN agent
+        if args.checkpoint_path:
+            # Use user-provided checkpoint path
+            checkpoint_path = args.checkpoint_path
+            print(f"[TEST] Loading DQN from user-provided path: {checkpoint_path}")
+        else:
+            # Use default path based on model_dir and config
+            checkpoint_path = os.path.join("model", "DQN_buffer_size_50000","checkpoints","best_model.zip")
+
+            
+            print(f"[TEST] Loading DQN from default path: {checkpoint_path}")
+        
+        if not os.path.exists(checkpoint_path):
+            print(f"[ERROR] DQN checkpoint not found: {checkpoint_path}")
+            print(f"Please provide a valid checkpoint path using --checkpoint_path")
+            return
 
         # Load stable-baselines3 DQN agent
         agent = DQN.load(checkpoint_path, env=env)
+        print(f"[TEST] Successfully loaded DQN checkpoint\n")
 
     elif args.method == 2:
-        checkpoint_path = os.path.join(
-            "model", "PPO", "checkpoints",
-            f"ppo_highway_vehicles_density_{config['vehicles_density']}"
-            f"_high_speed_reward_{config['high_speed_reward']}"
-            f"_collision_reward_{config['collision_reward']}.zip"
-        )
-
-        print(f"[TEST] Loading PPO from: {checkpoint_path}")
+        # PPO agent
+        if args.checkpoint_path:
+            # Use user-provided checkpoint path
+            checkpoint_path = args.checkpoint_path
+            print(f"[TEST] Loading PPO from user-provided path: {checkpoint_path}")
+        else:
+            # Use default path based on model_dir and config
+            checkpoint_path = os.path.join("model", "PPO_vehicles_density_1_high_speed_reward_0.4_collision_reward_-1", "best_model.zip")
+            
+            print(f"[TEST] Loading PPO from default path: {checkpoint_path}")
 
         if not os.path.exists(checkpoint_path):
             print(f"[ERROR] PPO checkpoint not found: {checkpoint_path}")
+            print(f"Please provide a valid checkpoint path using --checkpoint_path")
             return
 
         # Load stable-baselines3 PPO agent
         agent = PPO.load(checkpoint_path, env=env)
+        print(f"[TEST] Successfully loaded PPO checkpoint\n")
 
     total_collisions = 0
     total_epochs = 0
