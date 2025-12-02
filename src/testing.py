@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import argparse
 import numpy as np
 import os
+import time 
 from rule_based import OPDAgent
 from performance_metrics import get_collision_rate, get_collision_rate_per_action, get_average_speed
 from env_config import get_highway_config, parse_args
@@ -160,6 +161,7 @@ def main():
     total_epochs = 0
     total_actions = 0
     total_reward = 0.0
+    total_inference_time = 0.0  # Add total inference time tracking
     collision_rate_per_episode = 0
     collision_rate_per_action = 0
     episode_speeds = []
@@ -177,7 +179,13 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
+            # Measure inference time for each action
+            inference_start = time.time()
             action = get_action(env, args.method, agent=agent, obs=obs)
+            inference_end = time.time()
+            inference_time = inference_end - inference_start
+            total_inference_time += inference_time
+            
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
@@ -224,7 +232,7 @@ def main():
     average_speed = get_average_speed(episode_speeds)
     avg_reward_per_episode = np.mean(episode_total_rewards) if episode_total_rewards else 0.0
     avg_reward_per_action = total_reward / total_actions if total_actions > 0 else 0.0
-
+    avg_inference_time_per_action = total_inference_time / total_actions if total_actions > 0 else 0.0  # Calculate average inference time
 
     # Print summary for easy copy-paste to table
     print(f"\n=== Testing Results ===")
@@ -245,6 +253,7 @@ def main():
         if average_speed is not None
         else "Average Speed: N/A"
     )
+    print(f"Average Inference Time (per action): {avg_inference_time_per_action*1000:.4f} ms")  # Display in milliseconds
 
 
 if __name__ == "__main__":
