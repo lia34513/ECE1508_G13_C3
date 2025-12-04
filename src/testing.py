@@ -114,28 +114,41 @@ def main():
         )
 
     elif args.method == 1:
-        checkpoint_path = os.path.join(
-            "model", "DQN", "checkpoints",
-            f"dqn_highway_vehicles_density_{config['vehicles_density']}"
-            f"_high_speed_reward_{config['high_speed_reward']}"
-            f"_collision_reward_{config['collision_reward']}"
-        )
+        # Use custom checkpoint path if provided, otherwise construct from config
+        if args.checkpoint_path:
+            checkpoint_path = args.checkpoint_path
+        else:
+            checkpoint_path = os.path.join(
+                "model", "DQN", "checkpoints",
+                f"dqn_highway_vehicles_density_{config['vehicles_density']}"
+                f"_high_speed_reward_{config['high_speed_reward']}"
+                f"_collision_reward_{config['collision_reward']}"
+            )
+
         print(f"[TEST] Loading DQN from: {checkpoint_path}")
+
+        if not os.path.exists(checkpoint_path) and not os.path.exists(checkpoint_path + ".zip"):
+            print(f"[ERROR] DQN checkpoint not found: {checkpoint_path}")
+            return
 
         # Load stable-baselines3 DQN agent
         agent = DQN.load(checkpoint_path, env=env)
 
     elif args.method == 2:
-        checkpoint_path = os.path.join(
-            "model", "PPO", "checkpoints",
-            f"ppo_highway_vehicles_density_{config['vehicles_density']}"
-            f"_high_speed_reward_{config['high_speed_reward']}"
-            f"_collision_reward_{config['collision_reward']}.zip"
-        )
+        # Use custom checkpoint path if provided, otherwise construct from config
+        if args.checkpoint_path:
+            checkpoint_path = args.checkpoint_path
+        else:
+            checkpoint_path = os.path.join(
+                "model", "PPO", "checkpoints",
+                f"ppo_highway_vehicles_density_{config['vehicles_density']}"
+                f"_high_speed_reward_{config['high_speed_reward']}"
+                f"_collision_reward_{config['collision_reward']}.zip"
+            )
 
         print(f"[TEST] Loading PPO from: {checkpoint_path}")
 
-        if not os.path.exists(checkpoint_path):
+        if not os.path.exists(checkpoint_path) and not os.path.exists(checkpoint_path + ".zip"):
             print(f"[ERROR] PPO checkpoint not found: {checkpoint_path}")
             return
 
