@@ -166,17 +166,6 @@ python3 src/training_ppo.py --n_envs 8 --model_dir PPO_baseline
 python3 src/training_ppo.py --resume model/PPO/checkpoints/ppo_checkpoint_100000_steps.zip --model_dir PPO_resumed
 ```
 
-### Training Time Estimation
-
-Both DQN and PPO training scripts now include automatic time estimation:
-- **Real-time progress**: Shows training progress percentage
-- **Elapsed time**: Displays how long training has been running
-- **Estimated remaining time**: Calculates and displays estimated time to completion
-- **FPS (Frames Per Second)**: Shows current training speed
-- **Final summary**: Displays total training time and average FPS when training completes
-
-Time estimates are updated every 1000 steps and provide accurate predictions based on current training speed.
-
 ### Viewing Training Logs with TensorBoard
 
 Reward/loss curves and Stable-Baselines3 logs are written under `model/{model_dir}/logs/`.  
