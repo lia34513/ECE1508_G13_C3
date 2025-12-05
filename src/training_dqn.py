@@ -30,6 +30,24 @@ def make_env_fn(seed: int):
     return _init
 
 
+def linear_schedule(initial_value: float, final_value: float = 0.0):
+    """
+    Linear learning rate schedule.
+    
+    Args:
+        initial_value: Initial learning rate
+        final_value: Final learning rate (default: 0.0)
+    
+    Returns:
+        A function that takes progress_remaining (0 to 1) and returns learning rate
+    """
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will go from 1 (beginning) to 0 (end).
+        """
+        return final_value + (initial_value - final_value) * progress_remaining
+    return func
+
 def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN", resume_from: str = None):
     """
     Train DQN model.
@@ -44,6 +62,7 @@ def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN", resume_from: str = N
         # Use vectorized environment for multiple parallel envs
         env = DummyVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
     else:
+        print(f"Using single environment with Monitor wrapper for episode statistics")
         # Use single environment with Monitor wrapper for episode statistics
         env = gymnasium.make("highway-v0", config=config, render_mode="rgb_array")
         env = Monitor(env)
@@ -95,17 +114,24 @@ def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN", resume_from: str = N
         print(f"Will train for {remaining_timesteps} more timesteps to reach {total_timesteps} total.")
     else:
         # Create new model from scratch
+        # Define learning rate schedule
+        # Option 1: Linear decay from 5e-4 to 1e-5
+        lr_schedule = linear_schedule(initial_value=5e-4, final_value=1e-5)
+        
         model = DQN('MlpPolicy', env,
                         policy_kwargs=dict(net_arch=[256, 256]),
-                        learning_rate=5e-4,
-                        buffer_size=25000,
+                        learning_rate=lr_schedule,  # Use schedule instead of constant
+                        # learning_rate=5e-4,
+                        buffer_size=50000,
                         learning_starts=500,
                         batch_size=32,
-                        gamma=0.95,
+                        gamma=0.99,
+                        # gamma=0.95,
                         train_freq=1,
                         gradient_steps=1,
                         target_update_interval=50,
-                        exploration_fraction=0.5,
+                        # exploration_fraction=0.5,
+                        exploration_final_eps=0.00,
                         verbose=1,
                         tensorboard_log=os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}"))
         remaining_timesteps = total_timesteps
