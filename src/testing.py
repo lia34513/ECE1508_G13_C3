@@ -67,8 +67,6 @@ def main():
     if args.duration is not None:
         config["duration"] = args.duration
 
-    # Fixed random seed for reproducibility and fair comparison across agents
-    # All agents will see the same sequence of initial states for each epoch
     fixed_seed = 42
     
     # Print settings at the beginning
@@ -161,15 +159,13 @@ def main():
     total_epochs = 0
     total_actions = 0
     total_reward = 0.0
-    total_inference_time = 0.0  # Add total inference time tracking
+    total_inference_time = 0.0
     collision_rate_per_episode = 0
     collision_rate_per_action = 0
     episode_speeds = []
-    episode_total_rewards = []  # Total reward per episode
+    episode_total_rewards = []
 
     for epoch_num in range(args.epochs):
-        # Use deterministic seed for each epoch based on epoch number
-        # This ensures all agents see the same sequence of environments
         epoch_seed = fixed_seed + epoch_num
         obs, info = env.reset(seed=epoch_seed)
 
@@ -177,9 +173,7 @@ def main():
         epoch_steps = 0
         step_speeds = []
 
-        # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
-            # Measure inference time for each action
             inference_start = time.time()
             action = get_action(env, args.method, agent=agent, obs=obs)
             inference_end = time.time()
@@ -196,22 +190,17 @@ def main():
             epoch_steps += 1
             total_actions += 1
 
-            # Record the ego vehicle speed if available in info.
             ego_speed = info.get("speed")
             if ego_speed is not None:
                 step_speeds.append(ego_speed)
 
-            # Only render if using human mode
             if args.render_mode == "human":
                 env.render()
 
             if done or truncated:
                 break
 
-        # Save episode speed data
         episode_speeds.append(step_speeds)
-
-        # Check for collision at the end of the epoch
         total_epochs += 1
         crashed = info.get("crashed", False)
         if crashed:
@@ -219,22 +208,19 @@ def main():
 
         episode_total_rewards.append(epoch_reward)
 
-        # Display crashed state and performance for each epoch
         avg_reward_per_action = epoch_reward / epoch_steps if epoch_steps > 0 else 0.0
         crashed_status = "CRASHED" if crashed else "OK"
         print(
             f"Epoch {epoch_num + 1}/{args.epochs}: {crashed_status}, Total reward: {epoch_reward:.2f}, Avg reward per action: {avg_reward_per_action:.4f}"
         )
 
-    # Calculate and display metrics
     collision_rate_per_episode = get_collision_rate(total_collisions, total_epochs)
     collision_rate_per_action = get_collision_rate_per_action(total_collisions, total_actions)
     average_speed = get_average_speed(episode_speeds)
     avg_reward_per_episode = np.mean(episode_total_rewards) if episode_total_rewards else 0.0
     avg_reward_per_action = total_reward / total_actions if total_actions > 0 else 0.0
-    avg_inference_time_per_action = total_inference_time / total_actions if total_actions > 0 else 0.0  # Calculate average inference time
+    avg_inference_time_per_action = total_inference_time / total_actions if total_actions > 0 else 0.0
 
-    # Print summary for easy copy-paste to table
     print(f"\n=== Testing Results ===")
     print(
         f"Collision Rate (per episode): {collision_rate_per_episode:.2f}%"
@@ -253,7 +239,7 @@ def main():
         if average_speed is not None
         else "Average Speed: N/A"
     )
-    print(f"Average Inference Time (per action): {avg_inference_time_per_action*1000:.4f} ms")  # Display in milliseconds
+    print(f"Average Inference Time (per action): {avg_inference_time_per_action*1000:.4f} ms")
 
 
 if __name__ == "__main__":

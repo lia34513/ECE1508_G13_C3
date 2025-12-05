@@ -22,7 +22,6 @@ def make_env_fn(seed: int):
     """
     def _init():
         env = gymnasium.make("highway-v0", config=config, render_mode='rgb_array')
-        # Wrap with Monitor to enable episode statistics tracking
         env = Monitor(env)
         return env
     return _init
@@ -39,34 +38,23 @@ def train_ppo(n_envs: int = 8, resume_from: str = None, model_dir_name: str = "P
     """
 
    
-    # Create training environment(s)
     if n_envs > 1:
-        # Use vectorized environment for multiple parallel envs
         env = DummyVecEnv([make_env_fn(seed=i) for i in range(n_envs)])
     else:
-        # Use single environment with Monitor wrapper for episode statistics
         env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
         env = Monitor(env)
 
-    # log and checkpoint directories (under project root: model/{model_dir_name}/...)
     model_dir = os.path.join(BASE_DIR, "model", model_dir_name)
     log_dir = os.path.join(model_dir, "logs")
     checkpoint_dir = os.path.join(model_dir, "checkpoints")
 
-    # create evaluation environment (single env for evaluation)
-    # Use same seed for consistency
-    # Wrap with Monitor to track evaluation episode statistics
     eval_env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
     eval_env.reset(seed=1000)
     eval_env = Monitor(eval_env)
 
-    # total timesteps is counted across all envs
     total_timesteps = int(6e5)
-    
-    # Evaluation frequency (default from callbacks.py)
-    eval_freq = int(1e3)  # 1,000 steps
+    eval_freq = int(1e3)
 
-    # Create callbacks using shared function - evaluates and saves every eval_freq steps
     callbacks = create_training_callbacks(
         model_type='ppo',
         eval_env=eval_env,
@@ -77,18 +65,14 @@ def train_ppo(n_envs: int = 8, resume_from: str = None, model_dir_name: str = "P
         total_timesteps=total_timesteps, 
     )
 
-    # Initialize or load PPO model
     if resume_from:
         print(f"Resuming training from checkpoint: {resume_from}")
         if not os.path.exists(resume_from):
             print(f"Error: Checkpoint file not found: {resume_from}")
             return
-        # Load existing model and set the environment
         model = PPO.load(resume_from, env=env)
-        # Keep the same tensorboard log directory
         model.tensorboard_log = log_dir
     else:
-        # Initialize new PPO model
         model = PPO(
             "MlpPolicy",
             env,
@@ -107,7 +91,6 @@ def train_ppo(n_envs: int = 8, resume_from: str = None, model_dir_name: str = "P
             tensorboard_log=log_dir,
         )
 
-    # Check and report device being used
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
     if torch.cuda.is_available():
@@ -129,7 +112,6 @@ def train_ppo(n_envs: int = 8, resume_from: str = None, model_dir_name: str = "P
     model.learn(total_timesteps=total_timesteps, callback=callbacks, reset_num_timesteps=not resume_from)
     print("PPO training finished.")
 
-    # save final checkpoint
     checkpoint_path = os.path.join(
         checkpoint_dir, 
         f"ppo_highway_vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}_final.zip"
@@ -137,7 +119,6 @@ def train_ppo(n_envs: int = 8, resume_from: str = None, model_dir_name: str = "P
     model.save(checkpoint_path)
     print(f"Saved final PPO checkpoint to: {checkpoint_path}")
 
-    # close environments
     env.close()
     eval_env.close()
 

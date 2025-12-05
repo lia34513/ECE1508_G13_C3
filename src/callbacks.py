@@ -19,15 +19,15 @@ class TimeEstimateCallback(BaseCallback):
         self.start_time = None
         self.last_log_time = None
         self.last_log_step = 0
-        self.num_timesteps_at_start = 0  # Add this initialization
-        self.update_freq = 1000  # Update estimate every 1000 steps
+        self.num_timesteps_at_start = 0
+        self.update_freq = 1000
         
     def _on_training_start(self) -> None:
         """Called when training starts."""
         self.start_time = time.time()
         self.last_log_time = self.start_time
         self.last_log_step = self.num_timesteps
-        self.num_timesteps_at_start = self.num_timesteps  # Initialize here
+        self.num_timesteps_at_start = self.num_timesteps
         
     def _on_step(self) -> bool:
         """Called at each training step."""
@@ -42,7 +42,6 @@ class TimeEstimateCallback(BaseCallback):
         """Called when training ends."""
         if self.start_time is not None:
             total_time = time.time() - self.start_time
-            # Calculate final FPS
             elapsed_steps = self.num_timesteps - self.num_timesteps_at_start
             final_fps = elapsed_steps / total_time if total_time > 0 else 0
             self._print_time_info(total_time, is_final=True, fps=final_fps)
