@@ -28,13 +28,14 @@ def make_env_fn(seed: int):
     return _init
 
 
-def train_ppo(n_envs: int = 8, resume_from: str = None):
+def train_ppo(n_envs: int = 8, resume_from: str = None, model_dir_name: str = "PPO"):
     """
     Train PPO model.
     
     Args:
         n_envs: Number of parallel environments (default: 8)
         resume_from: Path to checkpoint to resume training from (default: None)
+        model_dir_name: Name of the directory to save models and logs (default: "PPO")
     """
 
    
@@ -47,8 +48,8 @@ def train_ppo(n_envs: int = 8, resume_from: str = None):
         env = gymnasium.make('highway-v0', config=config, render_mode='rgb_array')
         env = Monitor(env)
 
-    # log and checkpoint directories (under project root: model/PPO/...)
-    model_dir = os.path.join(BASE_DIR, "model", "PPO")
+    # log and checkpoint directories (under project root: model/{model_dir_name}/...)
+    model_dir = os.path.join(BASE_DIR, "model", model_dir_name)
     log_dir = os.path.join(model_dir, "logs")
     checkpoint_dir = os.path.join(model_dir, "checkpoints")
 
@@ -60,7 +61,7 @@ def train_ppo(n_envs: int = 8, resume_from: str = None):
     eval_env = Monitor(eval_env)
 
     # total timesteps is counted across all envs
-    total_timesteps = int(2e6)
+    total_timesteps = int(6e5)
     
     # Evaluation frequency (default from callbacks.py)
     eval_freq = int(1e3)  # 1,000 steps
@@ -73,6 +74,7 @@ def train_ppo(n_envs: int = 8, resume_from: str = None):
         log_dir=log_dir,
         eval_freq=eval_freq,
         n_eval_episodes=100,
+        total_timesteps=total_timesteps, 
     )
 
     # Initialize or load PPO model
@@ -87,13 +89,12 @@ def train_ppo(n_envs: int = 8, resume_from: str = None):
         model.tensorboard_log = log_dir
     else:
         # Initialize new PPO model
-        # NOTE: n_steps is per-env, so total rollout size per update is n_envs * n_steps.
         model = PPO(
             "MlpPolicy",
             env,
             policy_kwargs=dict(net_arch=[256, 256]),
             learning_rate=5e-4,
-            n_steps=1024,      # per env → total batch = n_envs * n_steps
+            n_steps=1024,     
             batch_size=64,
             n_epochs=10,
             gamma=0.99,
@@ -113,6 +114,7 @@ def train_ppo(n_envs: int = 8, resume_from: str = None):
         print(f"GPU: {torch.cuda.get_device_name(0)}")
         print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
     
+    print(f"Model directory: {model_dir}")
     if resume_from:
         print(
             f"Resuming PPO training for {total_timesteps} additional timesteps "
@@ -155,9 +157,15 @@ def main():
         default=None,
         help="Path to checkpoint to resume training from (default: None)"
     )
+    parser.add_argument(
+        "--model_dir",
+        type=str,
+        default="PPO",
+        help="Name of the directory to save models and logs (default: 'PPO')"
+    )
     
     args = parser.parse_args()
-    train_ppo(n_envs=args.n_envs, resume_from=args.resume)
+    train_ppo(n_envs=args.n_envs, resume_from=args.resume, model_dir_name=args.model_dir)
 
 
 if __name__ == "__main__":

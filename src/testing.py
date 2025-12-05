@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import argparse
 import numpy as np
 import os
+import time 
 from rule_based import OPDAgent
 from performance_metrics import get_collision_rate, get_collision_rate_per_action, get_average_speed
 from env_config import get_highway_config, parse_args
@@ -114,38 +115,53 @@ def main():
         )
 
     elif args.method == 1:
-        checkpoint_path = os.path.join(
-            "model", "DQN", "checkpoints",
-            f"dqn_highway_vehicles_density_{config['vehicles_density']}"
-            f"_high_speed_reward_{config['high_speed_reward']}"
-            f"_collision_reward_{config['collision_reward']}"
-        )
-        print(f"[TEST] Loading DQN from: {checkpoint_path}")
+        # DQN agent
+        if args.checkpoint_path:
+            # Use user-provided checkpoint path
+            checkpoint_path = args.checkpoint_path
+            print(f"[TEST] Loading DQN from user-provided path: {checkpoint_path}")
+        else:
+            # Use default path based on model_dir and config
+            checkpoint_path = os.path.join("model", "DQN_buffer_size_50000","checkpoints","best_model.zip")
+
+            
+            print(f"[TEST] Loading DQN from default path: {checkpoint_path}")
+        
+        if not os.path.exists(checkpoint_path):
+            print(f"[ERROR] DQN checkpoint not found: {checkpoint_path}")
+            print(f"Please provide a valid checkpoint path using --checkpoint_path")
+            return
 
         # Load stable-baselines3 DQN agent
         agent = DQN.load(checkpoint_path, env=env)
+        print(f"[TEST] Successfully loaded DQN checkpoint\n")
 
     elif args.method == 2:
-        checkpoint_path = os.path.join(
-            "model", "PPO", "checkpoints",
-            f"ppo_highway_vehicles_density_{config['vehicles_density']}"
-            f"_high_speed_reward_{config['high_speed_reward']}"
-            f"_collision_reward_{config['collision_reward']}.zip"
-        )
-
-        print(f"[TEST] Loading PPO from: {checkpoint_path}")
+        # PPO agent
+        if args.checkpoint_path:
+            # Use user-provided checkpoint path
+            checkpoint_path = args.checkpoint_path
+            print(f"[TEST] Loading PPO from user-provided path: {checkpoint_path}")
+        else:
+            # Use default path based on model_dir and config
+            checkpoint_path = os.path.join("model", "PPO_vehicles_density_1_high_speed_reward_0.4_collision_reward_-1", "best_model.zip")
+            
+            print(f"[TEST] Loading PPO from default path: {checkpoint_path}")
 
         if not os.path.exists(checkpoint_path):
             print(f"[ERROR] PPO checkpoint not found: {checkpoint_path}")
+            print(f"Please provide a valid checkpoint path using --checkpoint_path")
             return
 
         # Load stable-baselines3 PPO agent
         agent = PPO.load(checkpoint_path, env=env)
+        print(f"[TEST] Successfully loaded PPO checkpoint\n")
 
     total_collisions = 0
     total_epochs = 0
     total_actions = 0
     total_reward = 0.0
+    total_inference_time = 0.0  # Add total inference time tracking
     collision_rate_per_episode = 0
     collision_rate_per_action = 0
     episode_speeds = []
@@ -163,7 +179,13 @@ def main():
 
         # Run the trajectory until the episode is done or terminated (i.e. crashed or reached the duration)
         while True:
+            # Measure inference time for each action
+            inference_start = time.time()
             action = get_action(env, args.method, agent=agent, obs=obs)
+            inference_end = time.time()
+            inference_time = inference_end - inference_start
+            total_inference_time += inference_time
+            
             if action is None:
                 print(f"Error: Failed to get action for method {args.method}. Exiting.")
                 return
@@ -210,7 +232,7 @@ def main():
     average_speed = get_average_speed(episode_speeds)
     avg_reward_per_episode = np.mean(episode_total_rewards) if episode_total_rewards else 0.0
     avg_reward_per_action = total_reward / total_actions if total_actions > 0 else 0.0
-
+    avg_inference_time_per_action = total_inference_time / total_actions if total_actions > 0 else 0.0  # Calculate average inference time
 
     # Print summary for easy copy-paste to table
     print(f"\n=== Testing Results ===")
@@ -231,6 +253,7 @@ def main():
         if average_speed is not None
         else "Average Speed: N/A"
     )
+    print(f"Average Inference Time (per action): {avg_inference_time_per_action*1000:.4f} ms")  # Display in milliseconds
 
 
 if __name__ == "__main__":

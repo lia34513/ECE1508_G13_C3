@@ -13,7 +13,7 @@ def get_highway_config():
         "right_lane_reward": 0,  # Coefficient for lane preference
         "reward_speed_range": [20, 30],  # v_min and v_max for normalization
         "normalize_reward": True,  # Optional normalization to [0, 1]
-        "vehicles_density": 1.25,  # The density of the traffic
+        "vehicles_density": 1.0,  # The density of the traffic
         "duration": 40,  # The duration of the episode
     }
     return config
@@ -41,6 +41,13 @@ def parse_args():
         default=0,
         help="0: OPD (Optimistic Planning), 1: stable-baselines3 DQN, 2: stable-baselines3 PPO",
     )
+    parser.add_argument(
+        "--checkpoint_path",
+        type=str,
+        default=None,
+        help="Path to checkpoint file (for method 1 or 2). If not provided, uses default path based on config.",
+    )
+    
     parser.add_argument(
         "--duration",
         type=int,
