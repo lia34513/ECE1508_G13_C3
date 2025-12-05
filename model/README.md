@@ -51,7 +51,7 @@ This directory contains trained model checkpoints and training logs for differen
 - **n_steps**: `1024`
 - **Batch size**: `64`
 - **n_epochs**: `10`
-- **Gamma**: `0.99`
+- **Gamma**: `0.95`
 - **GAE lambda**: `0.95`
 - **Clip range**: `0.2`
 - **Entropy coefficient**: `0.01`

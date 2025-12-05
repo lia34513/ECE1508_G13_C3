@@ -129,7 +129,7 @@ python3 src/training_ppo.py
 - **Number of steps per update**: `1024` (per environment)
 - **Batch size**: `64`
 - **Number of epochs**: `10` (train on collected data for 10 epochs)
-- **Gamma (discount factor)**: `0.99`
+- **Gamma (discount factor)**: `0.95`
 - **GAE lambda**: `0.95` (for advantage estimation)
 - **Clip range**: `0.2` (PPO clipping parameter)
 - **Entropy coefficient**: `0.01` (encourages exploration)
