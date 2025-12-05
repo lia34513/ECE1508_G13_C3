@@ -120,18 +120,18 @@ def train_dqn(n_envs: int = 1, model_dir_name: str = "DQN", resume_from: str = N
         
         model = DQN('MlpPolicy', env,
                         policy_kwargs=dict(net_arch=[256, 256]),
-                        learning_rate=lr_schedule,  # Use schedule instead of constant
-                        # learning_rate=5e-4,
+                        # learning_rate=lr_schedule,  # Use schedule instead of constant
+                        learning_rate=5e-4,
                         buffer_size=50000,
                         learning_starts=500,
                         batch_size=32,
-                        gamma=0.99,
-                        # gamma=0.95,
+                        # gamma=0.99,
+                        gamma=0.95,
                         train_freq=1,
                         gradient_steps=1,
                         target_update_interval=50,
-                        # exploration_fraction=0.5,
-                        exploration_final_eps=0.00,
+                        exploration_fraction=0.5,
+                        # exploration_final_eps=0.00,
                         verbose=1,
                         tensorboard_log=os.path.join(log_dir, f"vehicles_density_{config['vehicles_density']}_high_speed_reward_{config['high_speed_reward']}_collision_reward_{config['collision_reward']}"))
         remaining_timesteps = total_timesteps
